@@ -36,4 +36,6 @@ message LonControllerConf {
 
   // low/high speed switch transition-window
   optional double switch_speed_window = 19 [default = 0.0];
+  optional double speed_shake_threshold = 20;
+  optional double current_speed_threshold = 21;
 }

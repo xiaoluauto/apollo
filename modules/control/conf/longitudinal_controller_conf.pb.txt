@@ -121,6 +121,8 @@ lat_controller_conf {
   }
 }
 lon_controller_conf {
+  speed_shake_threshold: 0.1
+  current_speed_threshold: 0.1
   ts: 0.01
   brake_minimum_action: 0.0
   throttle_minimum_action: 0.0

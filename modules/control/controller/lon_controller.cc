@@ -222,13 +222,24 @@ Status LonController::ComputeControlCommand(
   } else {
     speed_pid_controller_.SetPID(lon_controller_conf.high_speed_pid_conf());
   }
-
+//   if (std::fabs(station_error_limited) < lon_controller_conf.speed_shake_threshold() &&
+//       std::fabs(chassis_->speed_mps()) < lon_controller_conf.current_speed_threshold()) {
+//     station_error_limited = 0;
+//   }
   double speed_offset =
       station_pid_controller_.Control(station_error_limited, ts);
   if (enable_leadlag) {
     speed_offset = station_leadlag_controller_.Control(speed_offset, ts);
   }
-
+  AERROR << "before speed offset is: " << speed_offset;
+  AERROR << "the speed is: " << chassis_->speed_mps();
+  AERROR << "the speed_shake_threshold is: " << lon_controller_conf.speed_shake_threshold();
+  AERROR << "the current_speed_threshold is: " << lon_controller_conf.current_speed_threshold();
+  if (std::fabs(speed_offset) < lon_controller_conf.speed_shake_threshold() &&
+      std::fabs(chassis_->speed_mps()) < lon_controller_conf.current_speed_threshold()) {
+    speed_offset = 0;
+  }
+  AERROR << "after speed offset is: " << speed_offset;
   double speed_controller_input = 0.0;
   double speed_controller_input_limit =
       lon_controller_conf.speed_controller_input_limit();
@@ -356,7 +367,8 @@ Status LonController::ComputeControlCommand(
   cmd->set_throttle(throttle_cmd);
   cmd->set_brake(brake_cmd);
   cmd->set_acceleration(acceleration_cmd);
-
+  AERROR << "the throttle_cmd is: " << throttle_cmd;
+  AERROR << "the brake_cmd is: " << brake_cmd;
   if (std::fabs(injector_->vehicle_state()->linear_velocity()) <=
           vehicle_param_.max_abs_speed_when_stopped() ||
       chassis->gear_location() == trajectory_message_->gear() ||
