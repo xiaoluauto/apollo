@@ -271,6 +271,9 @@ void OpenSpaceRoiDecider::SetParkingSpotEndPose(
   if (plot_type == ParkingSpotType::PARALLEL_PLOT) {
     double parllel_park_end_x_buffer =
         config_.open_space_roi_decider_config().parallel_park_end_x_buffer();
+    AERROR << "the extend_left_x_buffer is: " << 
+      config_.open_space_roi_decider_config().extend_left_x_buffer();
+    AERROR << "the parllel_park_end_x_buffer is: " << parllel_park_end_x_buffer;
     parking_spot_heading = (left_down - right_down).Angle();
     end_y = (left_top.y() + left_down.y()) / 2.0;
     end_x = left_top.x() + vehicle_params_.back_edge_to_center() +
