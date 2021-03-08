@@ -283,21 +283,25 @@ Status LonController::ComputeControlCommand(
 
   // At near-stop stage, replace the brake control command with the standstill
   // acceleration if the former is even softer than the latter
+  AERROR << "the debug->path_remain() is: " << debug->path_remain();
+  AERROR << "the max_acceleration_when_stopped is: " << control_conf_->max_acceleration_when_stopped();
+  AERROR << "the max_abs_speed_when_stopped is: " << vehicle_param_.max_abs_speed_when_stopped();
+  AERROR << "the max_path_remain_when_stopped is: " << control_conf_->max_path_remain_when_stopped();
   if ((trajectory_message_->trajectory_type() ==
        apollo::planning::ADCTrajectory::NORMAL) &&
       ((std::fabs(debug->preview_acceleration_reference()) <=
-            control_conf_->max_acceleration_when_stopped() &&
+            control_conf_->max_acceleration_when_stopped() && // 0.01
         std::fabs(debug->preview_speed_reference()) <=
-            vehicle_param_.max_abs_speed_when_stopped()) ||
+            vehicle_param_.max_abs_speed_when_stopped()) || // 0.15
        std::abs(debug->path_remain()) <
-           control_conf_->max_path_remain_when_stopped())) {
+           control_conf_->max_path_remain_when_stopped())) { // 0.3
     acceleration_cmd =
         (chassis->gear_location() == canbus::Chassis::GEAR_REVERSE)
             ? std::max(acceleration_cmd,
                        -lon_controller_conf.standstill_acceleration())
             : std::min(acceleration_cmd,
                        lon_controller_conf.standstill_acceleration());
-    ADEBUG << "Stop location reached";
+    AERROR << "Stop location reached";
     debug->set_is_full_stop(true);
   }
 
@@ -367,8 +371,23 @@ Status LonController::ComputeControlCommand(
   cmd->set_throttle(throttle_cmd);
   cmd->set_brake(brake_cmd);
   cmd->set_acceleration(acceleration_cmd);
-  AERROR << "the throttle_cmd is: " << throttle_cmd;
-  AERROR << "the brake_cmd is: " << brake_cmd;
+  AERROR << "the debug->station_reference() is: " << debug->station_reference();
+  AERROR << "the debug->station_error() is: " << debug->station_error();
+  AERROR << "the station_error_limited is: " << station_error_limited;
+  AERROR << "the debug->preview_station_error() is: " << debug->preview_station_error();
+  AERROR << "the debug->speed_reference() is: " << debug->speed_reference();
+  AERROR << "the debug->speed_error() is: " << debug->speed_error();
+  AERROR << "the speed_controller_input_limited is: " << speed_controller_input_limited;
+  AERROR << "the debug->preview_speed_reference() is: " << debug->preview_speed_reference();
+  AERROR << "the debug->preview_speed_error() is: " << debug->preview_speed_error();
+  AERROR << "the debug->preview_acceleration_reference() is: " << debug->preview_acceleration_reference();
+  AERROR << "the acceleration_cmd_closeloop is: " << acceleration_cmd_closeloop;
+  AERROR << "the acceleration_cmd is: " << acceleration_cmd;
+  AERROR << "the debug->acceleration_lookup() is: " << debug->acceleration_lookup();
+  AERROR << "the debug->speed_lookup() is: " << debug->speed_lookup();
+  AERROR << "the calibration_value is: " << calibration_value;
+  AERROR << "the throotle cmd is: " << throttle_cmd;
+  AERROR << "the brake cmd is: " << brake_cmd;
   if (std::fabs(injector_->vehicle_state()->linear_velocity()) <=
           vehicle_param_.max_abs_speed_when_stopped() ||
       chassis->gear_location() == trajectory_message_->gear() ||
