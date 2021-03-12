@@ -155,6 +155,7 @@ Status OpenSpaceTrajectoryPartition::Process() {
     flag_change_to_next = CheckReachTrajectoryEnd(
         trajectory, gear, trajectories_size, i, &current_trajectory_index,
         &current_trajectory_point_index);
+    AERROR << "the flag_change_to_next is tt: " << flag_change_to_next; 
     if (flag_change_to_next &&
         !CheckTrajTraversed(trajectories_encodings[current_trajectory_index])) {
       UpdateTrajHistory(trajectories_encodings[current_trajectory_index]);
@@ -248,7 +249,8 @@ Status OpenSpaceTrajectoryPartition::Process() {
   auto trajectory = &(chosen_partitioned_trajectory->first);
 
   ADEBUG << "chosen_partitioned_trajectory [" << trajectory->size() << "]";
-
+  AERROR << "the FLAGS_use_gear_shift_trajectory is: " << FLAGS_use_gear_shift_trajectory;
+  AERROR << "the flag_change_to_next is: " << flag_change_to_next; 
   if (FLAGS_use_gear_shift_trajectory) {
     if (InsertGearShiftTrajectory(flag_change_to_next, current_trajectory_index,
                                   open_space_info.partitioned_trajectories(),
@@ -547,7 +549,23 @@ bool OpenSpaceTrajectoryPartition::CheckReachTrajectoryEnd(
         *current_trajectory_index = trajectories_index + 1;
         *current_trajectory_point_index = 0;
       }
-      ADEBUG << "Reach the end of a trajectory, switching to next one";
+      AERROR << "Reach the end of a trajectory, switching to next one";
+      AERROR << "the vehicle_box_iou_threshold_to_midpoint is: " << vehicle_box_iou_threshold_to_midpoint_;
+      AERROR << "Vehicle did not reach end of a trajectory with conditions for "
+            "lateral distance_check: "
+         << (lateral_offset < lateral_offset_to_midpoint_)
+         << " and actual lateral distance: " << lateral_offset
+         << "; longitudinal distance_check: "
+         << (longitudinal_offset < longitudinal_offset_to_midpoint_)
+         << " and actual longitudinal distance: " << longitudinal_offset
+         << "; heading_check: "
+         << (heading_search_to_trajs_end < heading_offset_to_midpoint_)
+         << " with actual heading: " << heading_search_to_trajs_end
+         << "; velocity_check: "
+         << (std::abs(ego_v_) < linear_velocity_threshold_on_ego_)
+         << " with actual linear velocity: " << ego_v_ << "; iou_check: "
+         << (end_point_iou_ratio > vehicle_box_iou_threshold_to_midpoint_)
+         << " with actual iou: " << end_point_iou_ratio;
       return true;
     }
   }
@@ -645,13 +663,15 @@ bool OpenSpaceTrajectoryPartition::InsertGearShiftTrajectory(
     const bool flag_change_to_next, const size_t current_trajectory_index,
     const std::vector<TrajGearPair>& partitioned_trajectories,
     TrajGearPair* gear_switch_idle_time_trajectory) {
+  AERROR << "enter the InsertGearShiftTrajectory";
   const auto* last_frame = injector_->frame_history()->Latest();
   const auto& last_gear_status =
       last_frame->open_space_info().gear_switch_states();
   auto* current_gear_status =
       frame_->mutable_open_space_info()->mutable_gear_switch_states();
   *(current_gear_status) = last_gear_status;
-
+  AERROR << "the flag_change_to_next is: " << flag_change_to_next; 
+  AERROR << "the current_gear_status->gear_shift_period_finished is: " << current_gear_status->gear_shift_period_finished;
   if (flag_change_to_next || !current_gear_status->gear_shift_period_finished) {
     current_gear_status->gear_shift_period_finished = false;
     if (current_gear_status->gear_shift_period_started) {
@@ -661,11 +681,14 @@ bool OpenSpaceTrajectoryPartition::InsertGearShiftTrajectory(
           partitioned_trajectories.at(current_trajectory_index).second;
       current_gear_status->gear_shift_period_started = false;
     }
+    AERROR << "the gear_shift_period_time is: " << current_gear_status->gear_shift_period_time;
+    AERROR << "the gear_shift_period_duration is: " << open_space_trajectory_partition_config_.gear_shift_period_duration();
     if (current_gear_status->gear_shift_period_time >
         open_space_trajectory_partition_config_.gear_shift_period_duration()) {
       current_gear_status->gear_shift_period_finished = true;
       current_gear_status->gear_shift_period_started = true;
     } else {
+      AERROR << "enter the GenerateGearShiftTrajectory";
       GenerateGearShiftTrajectory(current_gear_status->gear_shift_position,
                                   gear_switch_idle_time_trajectory);
       current_gear_status->gear_shift_period_time =
