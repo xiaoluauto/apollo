@@ -33,6 +33,7 @@
 #include "cyber/time/clock.h"
 #include "modules/common/configs/proto/vehicle_config.pb.h"
 #include "modules/common/configs/vehicle_config_helper.h"
+#include "modules/common/math/linesegmentkdtree2d.h"
 #include "modules/common/math/math_utils.h"
 #include "modules/planning/common/obstacle.h"
 #include "modules/planning/common/planning_gflags.h"
@@ -53,7 +54,10 @@ struct HybridAStartResult {
   std::vector<double> steer;
   std::vector<double> accumulated_s;
 };
-
+using linesegment = apollo::common::math::LineSegment2d;
+using linesegmentkdtree =
+      apollo::common::math::LineSegmentKDTree2d<linesegment>;
+using apollo::common::math::Box2d;
 class HybridAStar {
  public:
   explicit HybridAStar(const PlannerOpenSpaceConfig& open_space_conf);
@@ -67,6 +71,9 @@ class HybridAStar {
                            std::vector<HybridAStartResult>* partitioned_result);
 
  private:
+  bool CollisionCheck(const Box2d vehicle_box,
+                      const apollo::common::math::Vec2d &point);
+  void CreateKDTree();
   bool AnalyticExpansion(std::shared_ptr<Node3d> current_node);
   // check collision and validity
   bool ValidityCheck(std::shared_ptr<Node3d> node);
@@ -111,9 +118,9 @@ class HybridAStar {
   std::shared_ptr<Node3d> start_node_;
   std::shared_ptr<Node3d> end_node_;
   std::shared_ptr<Node3d> final_node_;
-  std::vector<std::vector<common::math::LineSegment2d>>
+  std::vector<std::vector<apollo::common::math::LineSegment2d>>
       obstacles_linesegments_vec_;
-
+  std::vector<common::math::Vec2d> obstacle_vec_;
   struct cmp {
     bool operator()(const std::pair<std::string, double>& left,
                     const std::pair<std::string, double>& right) const {
@@ -127,6 +134,8 @@ class HybridAStar {
   std::unordered_map<std::string, std::shared_ptr<Node3d>> close_set_;
   std::unique_ptr<ReedShepp> reed_shepp_generator_;
   std::unique_ptr<GridSearch> grid_a_star_heuristic_generator_;
+  std::vector<linesegment> line_segment_list_;
+  std::unique_ptr<linesegmentkdtree> line_segment_kdtree_;
 };
 
 }  // namespace planning
