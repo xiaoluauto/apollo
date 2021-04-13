@@ -113,17 +113,9 @@ bool HybridAStar::ValidityCheck(std::shared_ptr<Node3d> node) {
     }
     Box2d bounding_box = Node3d::GetBoundingBox(
         vehicle_param_, traversed_x[i], traversed_y[i], traversed_phi[i]);
-    for (const auto& obstacle_linesegments : obstacles_linesegments_vec_) {
-      for (const common::math::LineSegment2d& linesegment :
-           obstacle_linesegments) {
-        if (bounding_box.HasOverlap(linesegment)) {
-          ADEBUG << "collision start at x: " << linesegment.start().x();
-          ADEBUG << "collision start at y: " << linesegment.start().y();
-          ADEBUG << "collision end at x: " << linesegment.end().x();
-          ADEBUG << "collision end at y: " << linesegment.end().y();
-          return false;
-        }
-      }
+    const Vec2d sample_point{traversed_x[i], traversed_y[i]};
+    if (CollisionCheck(bounding_box, sample_point)) {
+      return false;
     }
   }
   return true;
@@ -638,6 +630,27 @@ bool HybridAStar::GetTemporalProfile(HybridAStartResult* result) {
   return true;
 }
 
+bool HybridAStar::CollisionCheck(const Box2d vehicle_box,
+                                 const apollo::common::math::Vec2d &point) {
+  const auto line_segment = line_segment_kdtree_->GetNearestObject(point);
+  if (vehicle_box.HasOverlap(*line_segment)) {
+    return true;
+  }
+  return false;
+}
+
+void HybridAStar::CreateKDTree() {
+  // generate the line segment
+  apollo::common::math::LineSegmentKDTreeParams params;
+  params.max_leaf_dimension = 5.0;  // meters.
+  params.max_leaf_size = 16;
+  line_segment_list_.clear();
+  for (size_t i = 0; i < obstacle_vec_.size() - 1; ++i) {
+    line_segment_list_.emplace_back(obstacle_vec_[i], obstacle_vec_[i + 1]);
+  }
+  line_segment_kdtree_.reset(new linesegmentkdtree(line_segment_list_, params));
+}
+
 bool HybridAStar::Plan(
     double sx, double sy, double sphi, double ex, double ey, double ephi,
     const std::vector<double>& XYbounds,
@@ -649,10 +662,16 @@ bool HybridAStar::Plan(
   open_pq_ = decltype(open_pq_)();
   final_node_ = nullptr;
 
+  // struct the obstacle line segment vector
   std::vector<std::vector<common::math::LineSegment2d>>
       obstacles_linesegments_vec;
+  std::vector<common::math::Vec2d> obstacle_vec;
   for (const auto& obstacle_vertices : obstacles_vertices_vec) {
     size_t vertices_num = obstacle_vertices.size();
+    for (size_t i = 0; i < vertices_num; ++i) {
+      obstacle_vec.emplace_back(obstacle_vertices[i]);
+      obstacle_vec_ = std::move(obstacle_vec);
+    }
     std::vector<common::math::LineSegment2d> obstacle_linesegments;
     for (size_t i = 0; i < vertices_num - 1; ++i) {
       common::math::LineSegment2d line_segment = common::math::LineSegment2d(
@@ -662,7 +681,8 @@ bool HybridAStar::Plan(
     obstacles_linesegments_vec.emplace_back(obstacle_linesegments);
   }
   obstacles_linesegments_vec_ = std::move(obstacles_linesegments_vec);
-
+  // create kd tree
+  CreateKDTree();
   // load XYbounds
   XYbounds_ = XYbounds;
   // load nodes and obstacles
