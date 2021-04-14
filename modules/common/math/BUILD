@@ -56,6 +56,7 @@ cc_library(
     hdrs = [
         "aabox2d.h",
         "aaboxkdtree2d.h",
+        "linesegmentkdtree2d.h",
         "box2d.h",
         "line_segment2d.h",
         "polygon2d.h",
