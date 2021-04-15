@@ -135,6 +135,12 @@ bool TaskManagerComponent::Proc(const std::shared_ptr<Task>& task) {
       AERROR << "plot verification failed, please select suitable plot!";
       return false;
     }
+  } else if (task->task_type() == TURN_AROUND) {
+    turning_around_routing_manager_ = std::make_shared<TurningAroundRoutingManager>();
+    turning_around_routing_manager_->Init(task->turning_around_routing_task());
+    routing_request_ = task->turning_around_routing_task().routing_request();
+    common::util::FillHeader(node_->Name(), &routing_request_);
+    request_writer_->Write(routing_request_);
   }
   return true;
 }
