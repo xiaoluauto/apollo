@@ -41,6 +41,7 @@
 #include "modules/planning/scenarios/traffic_light/unprotected_right_turn/traffic_light_unprotected_right_turn_scenario.h"
 #include "modules/planning/scenarios/util/util.h"
 #include "modules/planning/scenarios/yield_sign/yield_sign_scenario.h"
+// #include "modules/planning/scenarios/turn_around/turning_around/valet_parking_scenario.h"
 
 namespace apollo {
 namespace planning {
@@ -121,6 +122,10 @@ std::unique_ptr<Scenario> ScenarioManager::CreateScenario(
       ptr.reset(new scenario::yield_sign::YieldSignScenario(
           config_map_[scenario_type], &scenario_context_, injector_));
       break;
+    // case ScenarioConfig::TURNING_AROUND:
+    //   ptr.reset(new scenario::turning_around::TurningAroundScenario(
+    //       config_map_[scenario_type], &scenario_context_, injector_));
+    //   break;
     default:
       return nullptr;
   }
