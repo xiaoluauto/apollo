@@ -215,6 +215,8 @@ message ScenarioConfig {
 
     // learning model sample
     LEARNING_MODEL_SAMPLE = 15;
+    // turn around
+    TURNING_AROUND = 16;
   }
 
   // StageType is a superset of stages from all scenarios.
