@@ -17,34 +17,38 @@
 /**
  * @file
  **/
-#include "modules/planning/scenarios/turn_around/turning_around/stage_approaching_parking_spot.h"
 
+#include "modules/planning/scenarios/turn_around/turning_around/turning_around_scenario.h"
+
+#include "cyber/common/file.h"
+#include "cyber/common/log.h"
 #include "gtest/gtest.h"
-#include "modules/planning/proto/planning_config.pb.h"
+#include "modules/planning/common/planning_gflags.h"
 
 namespace apollo {
 namespace planning {
 namespace scenario {
 namespace turning_around {
-class StageApproachingParkingSpotTest : public ::testing::Test {
+
+class TurningAroundScenarioTest : public ::testing::Test {
  public:
-  virtual void SetUp() {
-    config_.set_stage_type(
-        ScenarioConfig::VALET_PARKING_APPROACHING_PARKING_SPOT);
-    injector_ = std::make_shared<DependencyInjector>();
-  }
+  virtual void SetUp() {}
 
  protected:
-  ScenarioConfig::StageConfig config_;
-  std::shared_ptr<DependencyInjector> injector_;
+  std::unique_ptr<TurningAroundScenario> scenario_;
 };
 
-TEST_F(StageApproachingParkingSpotTest, Init) {
-  StageApproachingParkingSpot stage_approaching_parking_spot(config_,
-                                                             injector_);
-  EXPECT_EQ(stage_approaching_parking_spot.Name(),
-            ScenarioConfig::StageType_Name(
-                ScenarioConfig::VALET_PARKING_APPROACHING_PARKING_SPOT));
+TEST_F(TurningAroundScenarioTest, Init) {
+  FLAGS_scenario_turning_around_config_file =
+      "/apollo/modules/planning/conf/scenario/turning_around_config.pb.txt";
+
+  ScenarioConfig config;
+  EXPECT_TRUE(apollo::cyber::common::GetProtoFromFile(
+      FLAGS_scenario_turning_around_config_file, &config));
+  ScenarioContext context;
+  auto injector = std::make_shared<DependencyInjector>();
+  scenario_.reset(new TurningAroundScenario(config, &context, injector));
+  EXPECT_EQ(scenario_->scenario_type(), ScenarioConfig::TURNING_AROUND);
 }
 
 }  // namespace turning_around

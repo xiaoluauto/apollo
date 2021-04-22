@@ -17,27 +17,39 @@
 /**
  * @file
  **/
-#include "modules/planning/scenarios/turn_around/turning_around/stage_parking.h"
+
+#pragma once
+
+#include <memory>
+
+#include "modules/planning/scenarios/turn_around/turning_around/turning_around_scenario.h"
+#include "modules/planning/scenarios/stage.h"
 
 namespace apollo {
 namespace planning {
 namespace scenario {
 namespace turning_around {
 
-Stage::StageStatus StageParking::Process(
-    const common::TrajectoryPoint& planning_init_point, Frame* frame) {
-  // Open space planning doesn't use planning_init_point from upstream because
-  // of different stitching strategy
-  frame->mutable_open_space_info()->set_is_on_open_space_trajectory(true);
-  bool plan_ok = ExecuteTaskOnOpenSpace(frame);
-  if (!plan_ok) {
-    AERROR << "StageParking planning error";
-    return StageStatus::ERROR;
-  }
-  return StageStatus::RUNNING;
-}
+class StageTurning : public Stage {
+ public:
+  StageTurning(const ScenarioConfig::StageConfig& config,
+               const std::shared_ptr<DependencyInjector>& injector)
+      : Stage(config, injector) {}
 
-Stage::StageStatus StageParking::FinishStage() { return Stage::FINISHED; }
+ private:
+  Stage::StageStatus Process(const common::TrajectoryPoint& planning_init_point,
+                             Frame* frame) override;
+
+  TurningAroundContext* GetContext() {
+    return GetContextAs<TurningAroundContext>();
+  }
+
+ private:
+  Stage::StageStatus FinishStage();
+
+ private:
+  ScenarioValetParkingConfig scenario_config_;
+};
 
 }  // namespace turning_around
 }  // namespace scenario

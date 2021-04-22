@@ -34,16 +34,16 @@ namespace planning {
 namespace scenario {
 namespace turning_around {
 
-struct ValetParkingContext {
-  ScenarioValetParkingConfig scenario_config;
+struct TurningAroundContext {// keng
+  ScenarioTurningAroundConfig scenario_config;
   std::string target_parking_spot_id;
   bool pre_stop_rightaway_flag = false;
   hdmap::MapPathPoint pre_stop_rightaway_point;
 };
 
-class ValetParkingScenario : public Scenario {
+class TurningAroundScenario : public Scenario {
  public:
-  ValetParkingScenario(const ScenarioConfig& config,
+  TurningAroundScenario(const ScenarioConfig& config,
                        const ScenarioContext* context,
                        const std::shared_ptr<DependencyInjector>& injector)
       : Scenario(config, context, injector) {}
@@ -57,7 +57,7 @@ class ValetParkingScenario : public Scenario {
   static bool IsTransferable(const Frame& frame,
                              const double parking_start_range);
 
-  ValetParkingContext* GetContext() { return &context_; }
+  TurningAroundContext* GetContext() { return &context_; }
 
  private:
   static void RegisterStages();
@@ -78,7 +78,7 @@ class ValetParkingScenario : public Scenario {
       Stage* (*)(const ScenarioConfig::StageConfig& stage_config,
                  const std::shared_ptr<DependencyInjector>& injector)>
       s_stage_factory_;
-  ValetParkingContext context_;
+  TurningAroundContext context_;
   const hdmap::HDMap* hdmap_ = nullptr;
 };
 

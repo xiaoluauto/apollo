@@ -17,33 +17,27 @@
 /**
  * @file
  **/
-#include "modules/planning/scenarios/turn_around/turning_around/stage_parking.h"
-
-#include "gtest/gtest.h"
-#include "modules/planning/proto/planning_config.pb.h"
+#include "modules/planning/scenarios/turn_around/turning_around/stage_turning.h"
 
 namespace apollo {
 namespace planning {
 namespace scenario {
 namespace turning_around {
 
-class StageParkingTest : public ::testing::Test {
- public:
-  virtual void SetUp() {
-    config_.set_stage_type(ScenarioConfig::VALET_PARKING_PARKING);
-    injector_ = std::make_shared<DependencyInjector>();
+Stage::StageStatus StageTurning::Process(
+    const common::TrajectoryPoint& planning_init_point, Frame* frame) {
+  // Open space planning doesn't use planning_init_point from upstream because
+  // of different stitching strategy
+  frame->mutable_open_space_info()->set_is_on_open_space_trajectory(true);
+  bool plan_ok = ExecuteTaskOnOpenSpace(frame);
+  if (!plan_ok) {
+    AERROR << "StageTurning planning error";
+    return StageStatus::ERROR;
   }
-
- protected:
-  ScenarioConfig::StageConfig config_;
-  std::shared_ptr<DependencyInjector> injector_;
-};
-
-TEST_F(StageParkingTest, Init) {
-  StageParking stage_parking(config_, injector_);
-  EXPECT_EQ(stage_parking.Name(), ScenarioConfig::StageType_Name(
-                                      ScenarioConfig::VALET_PARKING_PARKING));
+  return StageStatus::RUNNING;
 }
+
+Stage::StageStatus StageTurning::FinishStage() { return Stage::FINISHED; }
 
 }  // namespace turning_around
 }  // namespace scenario

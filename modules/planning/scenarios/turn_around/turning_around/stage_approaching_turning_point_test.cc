@@ -17,39 +17,35 @@
 /**
  * @file
  **/
+#include "modules/planning/scenarios/turn_around/turning_around/stage_approaching_turning_point.h"
 
-#pragma once
-
-#include <memory>
-
-#include "modules/planning/scenarios/turn_around/turning_around/valet_parking_scenario.h"
-#include "modules/planning/scenarios/stage.h"
+#include "gtest/gtest.h"
+#include "modules/planning/proto/planning_config.pb.h"
 
 namespace apollo {
 namespace planning {
 namespace scenario {
 namespace turning_around {
-
-class StageApproachingParkingSpot : public Stage {
+class StageApproachingTurningPointTest : public ::testing::Test {
  public:
-  StageApproachingParkingSpot(
-      const ScenarioConfig::StageConfig& config,
-      const std::shared_ptr<DependencyInjector>& injector)
-      : Stage(config, injector) {}
-
- private:
-  Stage::StageStatus Process(const common::TrajectoryPoint& planning_init_point,
-                             Frame* frame) override;
-
-  ValetParkingContext* GetContext() {
-    return GetContextAs<ValetParkingContext>();
+  virtual void SetUp() {
+    config_.set_stage_type(
+        ScenarioConfig::TURNING_AROUND_APPROACHING_TURNING_POINT);
+    injector_ = std::make_shared<DependencyInjector>();
   }
 
-  bool CheckADCStop(const Frame& frame);
-
- private:
-  ScenarioValetParkingConfig scenario_config_;
+ protected:
+  ScenarioConfig::StageConfig config_;
+  std::shared_ptr<DependencyInjector> injector_;
 };
+
+TEST_F(StageApproachingTurningPointTest, Init) {
+  StageApproachingTurningPoint stage_approaching_turning_point(config_,
+                                                             injector_);
+  EXPECT_EQ(stage_approaching_turning_point.Name(),
+            ScenarioConfig::StageType_Name(
+                ScenarioConfig::TURNING_AROUND_APPROACHING_TURNING_POINT));
+}
 
 }  // namespace turning_around
 }  // namespace scenario

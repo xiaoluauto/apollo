@@ -180,6 +180,10 @@ message ScenarioValetParkingConfig {
   optional double max_valid_stop_distance = 2 [default = 1.0];  // meter
 }
 
+message ScenarioTurningAroundConfig {
+
+}
+
 message ScenarioYieldSignConfig {
   optional double start_yield_sign_scenario_distance = 1
       [default = 10.0];                                         // meter
@@ -267,6 +271,10 @@ message ScenarioConfig {
     // valet parking scenario
     VALET_PARKING_APPROACHING_PARKING_SPOT = 700;
     VALET_PARKING_PARKING = 701;
+    
+    // turning around scenario
+    TURNING_AROUND_APPROACHING_TURNING_POINT = 1100;
+    TURNING_AROUND_TURNING = 1101;
 
     // park_and_go scenario
     PARK_AND_GO_CHECK = 800;
@@ -311,6 +319,7 @@ message ScenarioConfig {
         traffic_light_unprotected_right_turn_config = 13;
     ScenarioValetParkingConfig valet_parking_config = 14;
     ScenarioYieldSignConfig yield_sign_config = 15;
+    ScenarioTurningAroundConfig turning_around_config = 18;
   }
   // a list of stages that are used at runtime.  The first one is default stage.
   repeated StageType stage_type = 16;

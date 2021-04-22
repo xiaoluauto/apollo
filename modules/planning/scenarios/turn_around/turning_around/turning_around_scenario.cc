@@ -18,10 +18,10 @@
  * @file
  **/
 
-#include "modules/planning/scenarios/turn_around/turning_around/valet_parking_scenario.h"
+#include "modules/planning/scenarios/turn_around/turning_around/turning_around_scenario.h"
 
-#include "modules/planning/scenarios/turn_around/turning_around/stage_approaching_parking_spot.h"
-#include "modules/planning/scenarios/turn_around/turning_around/stage_parking.h"
+#include "modules/planning/scenarios/turn_around/turning_around/stage_approaching_turning_point.h"
+#include "modules/planning/scenarios/turn_around/turning_around/stage_turning.h"
 
 namespace apollo {
 namespace planning {
@@ -38,9 +38,9 @@ apollo::common::util::Factory<
     ScenarioConfig::StageType, Stage,
     Stage* (*)(const ScenarioConfig::StageConfig& stage_config,
                const std::shared_ptr<DependencyInjector>& injector)>
-    ValetParkingScenario::s_stage_factory_;
+    TurningAroundScenario::s_stage_factory_;
 
-void ValetParkingScenario::Init() {
+void TurningAroundScenario::Init() {
   if (init_) {
     return;
   }
@@ -56,25 +56,25 @@ void ValetParkingScenario::Init() {
   CHECK_NOTNULL(hdmap_);
 }
 
-void ValetParkingScenario::RegisterStages() {
+void TurningAroundScenario::RegisterStages() {
   if (s_stage_factory_.Empty()) {
     s_stage_factory_.Clear();
   }
   s_stage_factory_.Register(
-      ScenarioConfig::VALET_PARKING_APPROACHING_PARKING_SPOT,
+      ScenarioConfig::TURNING_AROUND_APPROACHING_TURNING_POINT,
       [](const ScenarioConfig::StageConfig& config,
          const std::shared_ptr<DependencyInjector>& injector) -> Stage* {
-        return new StageApproachingParkingSpot(config, injector);
+        return new StageApproachingTurningPoint(config, injector);
       });
   s_stage_factory_.Register(
-      ScenarioConfig::VALET_PARKING_PARKING,
+      ScenarioConfig::TURNING_AROUND_TURNING,
       [](const ScenarioConfig::StageConfig& config,
          const std::shared_ptr<DependencyInjector>& injector) -> Stage* {
-        return new StageParking(config, injector);
+        return new StageTurning(config, injector);
       });
 }
 
-std::unique_ptr<Stage> ValetParkingScenario::CreateStage(
+std::unique_ptr<Stage> TurningAroundScenario::CreateStage(
     const ScenarioConfig::StageConfig& stage_config,
     const std::shared_ptr<DependencyInjector>& injector) {
   if (s_stage_factory_.Empty()) {
@@ -88,16 +88,16 @@ std::unique_ptr<Stage> ValetParkingScenario::CreateStage(
   return ptr;
 }
 
-bool ValetParkingScenario::GetScenarioConfig() {
-  if (!config_.has_valet_parking_config()) {
+bool TurningAroundScenario::GetScenarioConfig() {
+  if (!config_.has_turning_around_config()) {
     AERROR << "miss scenario specific config";
     return false;
   }
-  context_.scenario_config.CopyFrom(config_.valet_parking_config());
+  context_.scenario_config.CopyFrom(config_.turning_around_config());
   return true;
 }
 
-bool ValetParkingScenario::IsTransferable(const Frame& frame,
+bool TurningAroundScenario::IsTransferable(const Frame& frame,
                                           const double parking_start_range) {
   // TODO(all) Implement available parking spot detection by preception results
   std::string target_parking_spot_id;
@@ -143,7 +143,7 @@ bool ValetParkingScenario::IsTransferable(const Frame& frame,
   return true;
 }
 
-bool ValetParkingScenario::SearchTargetParkingSpotOnPath(
+bool TurningAroundScenario::SearchTargetParkingSpotOnPath(
     const Path& nearby_path, const std::string& target_parking_id,
     PathOverlap* parking_space_overlap) {
   const auto& parking_space_overlaps = nearby_path.parking_space_overlaps();
@@ -156,7 +156,7 @@ bool ValetParkingScenario::SearchTargetParkingSpotOnPath(
   return false;
 }
 
-bool ValetParkingScenario::CheckDistanceToParkingSpot(
+bool TurningAroundScenario::CheckDistanceToParkingSpot(
     const Frame& frame,
     const VehicleState& vehicle_state, const Path& nearby_path,
     const double parking_start_range,

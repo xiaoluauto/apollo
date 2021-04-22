@@ -34,6 +34,7 @@
 #include "modules/planning/scenarios/learning_model/learning_model_sample_scenario.h"
 #include "modules/planning/scenarios/park/pull_over/pull_over_scenario.h"
 #include "modules/planning/scenarios/park/valet_parking/valet_parking_scenario.h"
+#include "modules/planning/scenarios/turn_around/turning_around/turning_around_scenario.h"
 #include "modules/planning/scenarios/park_and_go/park_and_go_scenario.h"
 #include "modules/planning/scenarios/stop_sign/unprotected/stop_sign_unprotected_scenario.h"
 #include "modules/planning/scenarios/traffic_light/protected/traffic_light_protected_scenario.h"
@@ -56,9 +57,9 @@ ScenarioManager::ScenarioManager(
 
 bool ScenarioManager::Init(const PlanningConfig& planning_config) {
   planning_config_.CopyFrom(planning_config);
-  RegisterScenarios();
+  RegisterScenarios(); // register scenario
   default_scenario_type_ = ScenarioConfig::LANE_FOLLOW;
-  current_scenario_ = CreateScenario(default_scenario_type_);
+  current_scenario_ = CreateScenario(default_scenario_type_); // create the scenario
   return true;
 }
 
@@ -122,10 +123,10 @@ std::unique_ptr<Scenario> ScenarioManager::CreateScenario(
       ptr.reset(new scenario::yield_sign::YieldSignScenario(
           config_map_[scenario_type], &scenario_context_, injector_));
       break;
-    // case ScenarioConfig::TURNING_AROUND:
-    //   ptr.reset(new scenario::turning_around::TurningAroundScenario(
-    //       config_map_[scenario_type], &scenario_context_, injector_));
-    //   break;
+    case ScenarioConfig::TURNING_AROUND:
+      ptr.reset(new scenario::turning_around::TurningAroundScenario(
+          config_map_[scenario_type], &scenario_context_, injector_));
+      break;
     default:
       return nullptr;
   }
@@ -198,6 +199,10 @@ void ScenarioManager::RegisterScenarios() {
   // yield_sign
   ACHECK(Scenario::LoadConfig(FLAGS_scenario_yield_sign_config_file,
                               &config_map_[ScenarioConfig::YIELD_SIGN]));
+  
+  // turn around
+  ACHECK(Scenario::LoadConfig(FLAGS_scenario_turning_around_config_file,
+                              &config_map_[ScenarioConfig::TURNING_AROUND]));
 }
 
 ScenarioConfig::ScenarioType ScenarioManager::SelectPullOverScenario(
@@ -317,6 +322,7 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectPullOverScenario(
     case ScenarioConfig::TRAFFIC_LIGHT_UNPROTECTED_LEFT_TURN:
     case ScenarioConfig::TRAFFIC_LIGHT_UNPROTECTED_RIGHT_TURN:
     case ScenarioConfig::VALET_PARKING:
+    case ScenarioConfig::TURNING_AROUND:
     case ScenarioConfig::YIELD_SIGN:
       if (current_scenario_->GetStatus() !=
           Scenario::ScenarioStatus::STATUS_DONE) {

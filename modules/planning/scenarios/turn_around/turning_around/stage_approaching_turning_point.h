@@ -22,7 +22,7 @@
 
 #include <memory>
 
-#include "modules/planning/scenarios/turn_around/turning_around/valet_parking_scenario.h"
+#include "modules/planning/scenarios/turn_around/turning_around/turning_around_scenario.h"
 #include "modules/planning/scenarios/stage.h"
 
 namespace apollo {
@@ -30,22 +30,22 @@ namespace planning {
 namespace scenario {
 namespace turning_around {
 
-class StageParking : public Stage {
+class StageApproachingTurningPoint : public Stage {
  public:
-  StageParking(const ScenarioConfig::StageConfig& config,
-               const std::shared_ptr<DependencyInjector>& injector)
+  StageApproachingTurningPoint(
+      const ScenarioConfig::StageConfig& config,
+      const std::shared_ptr<DependencyInjector>& injector)
       : Stage(config, injector) {}
 
  private:
   Stage::StageStatus Process(const common::TrajectoryPoint& planning_init_point,
                              Frame* frame) override;
 
-  ValetParkingContext* GetContext() {
-    return GetContextAs<ValetParkingContext>();
+  TurningAroundContext* GetContext() {
+    return GetContextAs<TurningAroundContext>();
   }
 
- private:
-  Stage::StageStatus FinishStage();
+  bool CheckADCStop(const Frame& frame);
 
  private:
   ScenarioValetParkingConfig scenario_config_;

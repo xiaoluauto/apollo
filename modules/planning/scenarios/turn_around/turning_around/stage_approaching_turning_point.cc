@@ -18,7 +18,7 @@
  * @file
  **/
 
-#include "modules/planning/scenarios/turn_around/turning_around/stage_approaching_parking_spot.h"
+#include "modules/planning/scenarios/turn_around/turning_around/stage_approaching_turning_point.h"
 
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
@@ -28,9 +28,9 @@ namespace planning {
 namespace scenario {
 namespace turning_around {
 
-Stage::StageStatus StageApproachingParkingSpot::Process(
+Stage::StageStatus StageApproachingTurningPoint::Process(
     const common::TrajectoryPoint& planning_init_point, Frame* frame) {
-  ADEBUG << "stage: StageApproachingParkingSpot";
+  ADEBUG << "stage: StageApproachingTurningPoint";
   CHECK_NOTNULL(frame);
   GetContext()->target_parking_spot_id.clear();
   if (frame->local_view().routing->routing_request().has_parking_info() &&
@@ -77,7 +77,7 @@ Stage::StageStatus StageApproachingParkingSpot::Process(
   return Stage::RUNNING;
 }
 
-bool StageApproachingParkingSpot::CheckADCStop(const Frame& frame) {
+bool StageApproachingTurningPoint::CheckADCStop(const Frame& frame) {
   const auto& reference_line_info = frame.reference_line_info().front();
   const double adc_speed = injector_->vehicle_state()->linear_velocity();
   const double max_adc_stop_speed = common::VehicleConfigHelper::Instance()

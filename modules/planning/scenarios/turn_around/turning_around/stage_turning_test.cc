@@ -17,38 +17,32 @@
 /**
  * @file
  **/
+#include "modules/planning/scenarios/turn_around/turning_around/stage_turning.h"
 
-#include "modules/planning/scenarios/turn_around/turning_around/valet_parking_scenario.h"
-
-#include "cyber/common/file.h"
-#include "cyber/common/log.h"
 #include "gtest/gtest.h"
-#include "modules/planning/common/planning_gflags.h"
+#include "modules/planning/proto/planning_config.pb.h"
 
 namespace apollo {
 namespace planning {
 namespace scenario {
 namespace turning_around {
 
-class ValetParkingScenarioTest : public ::testing::Test {
+class StageTurningTest : public ::testing::Test {
  public:
-  virtual void SetUp() {}
+  virtual void SetUp() {
+    config_.set_stage_type(ScenarioConfig::VALET_PARKING_PARKING);
+    injector_ = std::make_shared<DependencyInjector>();
+  }
 
  protected:
-  std::unique_ptr<ValetParkingScenario> scenario_;
+  ScenarioConfig::StageConfig config_;
+  std::shared_ptr<DependencyInjector> injector_;
 };
 
-TEST_F(ValetParkingScenarioTest, Init) {
-  FLAGS_scenario_valet_parking_config_file =
-      "/apollo/modules/planning/conf/scenario/valet_parking_config.pb.txt";
-
-  ScenarioConfig config;
-  EXPECT_TRUE(apollo::cyber::common::GetProtoFromFile(
-      FLAGS_scenario_valet_parking_config_file, &config));
-  ScenarioContext context;
-  auto injector = std::make_shared<DependencyInjector>();
-  scenario_.reset(new ValetParkingScenario(config, &context, injector));
-  EXPECT_EQ(scenario_->scenario_type(), ScenarioConfig::VALET_PARKING);
+TEST_F(StageTurningTest, Init) {
+  StageTurning stage_turning(config_, injector_);
+  EXPECT_EQ(stage_turning.Name(), ScenarioConfig::StageType_Name(
+                                      ScenarioConfig::TURNING_AROUND_TURNING));
 }
 
 }  // namespace turning_around

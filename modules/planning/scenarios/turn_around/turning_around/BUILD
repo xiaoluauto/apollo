@@ -7,14 +7,14 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "turning_around",
     srcs = [
-        "stage_approaching_parking_spot.cc",
-        "stage_parking.cc",
-        "valet_parking_scenario.cc",
+        "stage_approaching_turning_point.cc",
+        "stage_turning.cc",
+        "turning_around_scenario.cc",
     ],
     hdrs = [
-        "stage_approaching_parking_spot.h",
-        "stage_parking.h",
-        "valet_parking_scenario.h",
+        "stage_approaching_turning_point.h",
+        "stage_turning.h",
+        "turning_around_scenario.h",
     ],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
@@ -25,9 +25,9 @@ cc_library(
 )
 
 cc_test(
-    name = "valet_parking_scenario_test",
+    name = "turning_around_scenario_test",
     size = "small",
-    srcs = ["valet_parking_scenario_test.cc"],
+    srcs = ["turning_around_scenario_test.cc"],
     data = [
         "//modules/planning:planning_conf",
     ],
@@ -39,9 +39,9 @@ cc_test(
 )
 
 cc_test(
-    name = "stage_approaching_parking_spot_test",
+    name = "stage_approaching_turning_point_test",
     size = "small",
-    srcs = ["stage_approaching_parking_spot_test.cc"],
+    srcs = ["stage_approaching_turning_point_test.cc"],
     data = [
         "//modules/planning:planning_conf",
     ],
@@ -53,9 +53,9 @@ cc_test(
 )
 
 cc_test(
-    name = "stage_parking_test",
+    name = "stage_turning_test",
     size = "small",
-    srcs = ["stage_parking_test.cc"],
+    srcs = ["stage_turning_test.cc"],
     data = [
         "//modules/planning:planning_conf",
     ],

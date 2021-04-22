@@ -44,9 +44,9 @@ void ValetParkingScenario::Init() {
   if (init_) {
     return;
   }
-
+  // get the stage based on scenario
   Scenario::Init();
-
+  // get the scenario config file
   if (!GetScenarioConfig()) {
     AERROR << "fail to get scenario specific config";
     return;
@@ -55,7 +55,7 @@ void ValetParkingScenario::Init() {
   hdmap_ = hdmap::HDMapUtil::BaseMapPtr();
   CHECK_NOTNULL(hdmap_);
 }
-
+// 注册stage
 void ValetParkingScenario::RegisterStages() {
   if (s_stage_factory_.Empty()) {
     s_stage_factory_.Clear();
@@ -73,7 +73,7 @@ void ValetParkingScenario::RegisterStages() {
         return new StageParking(config, injector);
       });
 }
-
+// 创建stage
 std::unique_ptr<Stage> ValetParkingScenario::CreateStage(
     const ScenarioConfig::StageConfig& stage_config,
     const std::shared_ptr<DependencyInjector>& injector) {
@@ -93,10 +93,11 @@ bool ValetParkingScenario::GetScenarioConfig() {
     AERROR << "miss scenario specific config";
     return false;
   }
+  // config file move to context_
   context_.scenario_config.CopyFrom(config_.valet_parking_config());
   return true;
 }
-
+// 是否能够转换
 bool ValetParkingScenario::IsTransferable(const Frame& frame,
                                           const double parking_start_range) {
   // TODO(all) Implement available parking spot detection by preception results
