@@ -69,6 +69,14 @@ class OpenSpaceInfo {
   std::string *mutable_target_parking_spot_id() {
     return &target_parking_spot_id_;
   }
+  
+  std::string target_dead_end_id() const {
+    return target_dead_end_id_;
+  }
+  
+  std::string *mutable_target_dead_end_id() {
+    return &target_dead_end_id_;
+  }
 
   const hdmap::ParkingSpaceInfoConstPtr target_parking_spot() const {
     return target_parking_spot_;
@@ -309,6 +317,8 @@ class OpenSpaceInfo {
 
  private:
   std::string target_parking_spot_id_;
+
+  std::string target_dead_end_id_;
 
   hdmap::ParkingSpaceInfoConstPtr target_parking_spot_ = nullptr;
 

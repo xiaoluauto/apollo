@@ -33,6 +33,11 @@ message ParkingInfo {
   optional apollo.hdmap.Polygon corner_point = 4;
 }
 
+message DeadEnd {
+  optional string dead_end_id =1;
+  optional apollo.hdmap.Polygon guillotine_point = 2;
+}
+
 message RoutingRequest {
   optional apollo.common.Header header = 1;
   // at least two points. The first is start point, the end is final point.
@@ -43,6 +48,7 @@ message RoutingRequest {
   optional bool broadcast = 5 [default = true];
   optional apollo.hdmap.ParkingSpace parking_space = 6 [deprecated = true];
   optional ParkingInfo parking_info = 7;
+  optional DeadEnd dead_end = 8;
 }
 
 message Measurement {

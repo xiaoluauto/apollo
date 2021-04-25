@@ -48,7 +48,7 @@ class StageApproachingTurningPoint : public Stage {
   bool CheckADCStop(const Frame& frame);
 
  private:
-  ScenarioValetParkingConfig scenario_config_;
+  ScenarioTurningAroundConfig scenario_config_;
 };
 
 }  // namespace turning_around

@@ -32,27 +32,25 @@ Stage::StageStatus StageApproachingTurningPoint::Process(
     const common::TrajectoryPoint& planning_init_point, Frame* frame) {
   ADEBUG << "stage: StageApproachingTurningPoint";
   CHECK_NOTNULL(frame);
-  GetContext()->target_parking_spot_id.clear();
-  if (frame->local_view().routing->routing_request().has_parking_info() &&
-      frame->local_view()
-          .routing->routing_request()
-          .parking_info()
-          .has_parking_space_id()) {
-    GetContext()->target_parking_spot_id = frame->local_view()
-                                               .routing->routing_request()
-                                               .parking_info()
-                                               .parking_space_id();
+  GetContext()->target_dead_end_id.clear();
+  if (frame->local_view().routing->routing_request().has_dead_end() &&
+      frame->local_view().routing->routing_request().dead_end()
+      .has_dead_end_id()) {
+    GetContext()->target_dead_end_id = frame->local_view()
+                                .routing->routing_request()
+                                .dead_end()
+                                .dead_end_id();
   } else {
-    AERROR << "No parking space id from routing";
+    AERROR << "No dead end id from routing";
     return StageStatus::ERROR;
   }
 
-  if (GetContext()->target_parking_spot_id.empty()) {
+  if (GetContext()->target_dead_end_id.empty()) {
     return StageStatus::ERROR;
   }
 
-  *(frame->mutable_open_space_info()->mutable_target_parking_spot_id()) =
-      GetContext()->target_parking_spot_id;
+  *(frame->mutable_open_space_info()->mutable_target_dead_end_id()) =
+      GetContext()->target_dead_end_id;
   frame->mutable_open_space_info()->set_pre_stop_rightaway_flag(
       GetContext()->pre_stop_rightaway_flag);
   *(frame->mutable_open_space_info()->mutable_pre_stop_rightaway_point()) =
@@ -70,7 +68,7 @@ Stage::StageStatus StageApproachingTurningPoint::Process(
       frame->open_space_info().pre_stop_rightaway_point();
 
   if (CheckADCStop(*frame)) {
-    next_stage_ = ScenarioConfig::VALET_PARKING_PARKING;
+    next_stage_ = ScenarioConfig::TURNING_AROUND_TURNING;
     return Stage::FINISHED;
   }
 

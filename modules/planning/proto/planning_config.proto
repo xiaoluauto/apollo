@@ -181,7 +181,7 @@ message ScenarioValetParkingConfig {
 }
 
 message ScenarioTurningAroundConfig {
-
+  optional double max_valid_stop_distance = 1 [default = 6]; // meter
 }
 
 message ScenarioYieldSignConfig {

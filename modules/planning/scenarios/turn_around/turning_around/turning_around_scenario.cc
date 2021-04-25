@@ -98,103 +98,109 @@ bool TurningAroundScenario::GetScenarioConfig() {
 }
 
 bool TurningAroundScenario::IsTransferable(const Frame& frame,
-                                          const double parking_start_range) {
+                                           const double turn_start_range) {
   // TODO(all) Implement available parking spot detection by preception results
-  std::string target_parking_spot_id;
-  if (frame.local_view().routing->routing_request().has_parking_info() &&
+  std::string dead_end_id;
+  if (frame.local_view().routing->routing_request().has_dead_end() &&
       frame.local_view()
           .routing->routing_request()
-          .parking_info()
-          .has_parking_space_id()) {
-    target_parking_spot_id = frame.local_view()
-                                 .routing->routing_request()
-                                 .parking_info()
-                                 .parking_space_id();
+          .dead_end()
+          .has_dead_end_id()) {
+    dead_end_id = frame.local_view()
+                  .routing->routing_request()
+                  .dead_end()
+                  .dead_end_id();
   } else {
-    ADEBUG << "No parking space id from routing";
+    ADEBUG << "No dead end id from routing";
     return false;
   }
 
-  if (target_parking_spot_id.empty()) {
+  if (dead_end_id.empty()) {
     return false;
   }
-
+  // get the nearby path of dead end
   const auto& nearby_path =
       frame.reference_line_info().front().reference_line().map_path();
-  PathOverlap parking_space_overlap;
+  PathOverlap dead_end_overlap;
   const auto& vehicle_state = frame.vehicle_state();
 
-  if (!SearchTargetParkingSpotOnPath(nearby_path, target_parking_spot_id,
-                                     &parking_space_overlap)) {
-    ADEBUG << "No such parking spot found after searching all path forward "
+  if (!SearchTargetDeadEndOnPath(nearby_path, dead_end_id,
+                                 &dead_end_overlap)) {
+    ADEBUG << "No such dead end found after searching all path forward "
               "possible"
-           << target_parking_spot_id;
+           << dead_end_id;
     return false;
   }
 
-  if (!CheckDistanceToParkingSpot(frame, vehicle_state, nearby_path,
-                                  parking_start_range, parking_space_overlap)) {
-    ADEBUG << "target parking spot found, but too far, distance larger than "
+  if (!CheckDistanceToDeadEnd(frame, vehicle_state, nearby_path,
+                                  turn_start_range, dead_end_overlap)) {
+    ADEBUG << "target dead end found, but too far, distance larger than "
               "pre-defined distance"
-           << target_parking_spot_id;
+           << dead_end_id;
     return false;
   }
 
   return true;
 }
 
-bool TurningAroundScenario::SearchTargetParkingSpotOnPath(
-    const Path& nearby_path, const std::string& target_parking_id,
-    PathOverlap* parking_space_overlap) {
-  const auto& parking_space_overlaps = nearby_path.parking_space_overlaps();
-  for (const auto& parking_overlap : parking_space_overlaps) {
-    if (parking_overlap.object_id == target_parking_id) {
-      *parking_space_overlap = parking_overlap;
+bool TurningAroundScenario::SearchTargetDeadEndOnPath(
+    const Path& nearby_path, const std::string& dead_end_id,
+    PathOverlap* dead_end_overlap) {
+  const auto& dead_end_overlaps = nearby_path.dead_end_overlaps();
+  for (const auto& deading_overlap : dead_end_overlaps) {
+    if (deading_overlap.object_id == dead_end_id) {
+      *dead_end_overlap = deading_overlap;
       return true;
     }
   }
   return false;
 }
 
-bool TurningAroundScenario::CheckDistanceToParkingSpot(
+bool TurningAroundScenario::CheckDistanceToDeadEnd(
     const Frame& frame,
     const VehicleState& vehicle_state, const Path& nearby_path,
-    const double parking_start_range,
-    const PathOverlap& parking_space_overlap) {
-  // TODO(Jinyun) parking overlap s are wrong on map, not usable
-  // double parking_space_center_s =
-  //     (parking_space_overlap.start_s + parking_space_overlap.end_s) / 2.0;
+    const double turn_start_range,
+    const PathOverlap& dead_end_overlap) {
+  // get the hdmap pointer
   const hdmap::HDMap* hdmap = hdmap::HDMapUtil::BaseMapPtr();
   hdmap::Id id;
-  id.set_id(parking_space_overlap.object_id);
+  id.set_id(dead_end_overlap.object_id);
+  // get the dead_end pointer by the id, by the map colleague!!!!!! will be change
+  // changing !!!!!!!!!!!!!
   ParkingSpaceInfoConstPtr target_parking_spot_ptr =
       hdmap->GetParkingSpaceById(id);
-  Vec2d left_bottom_point = target_parking_spot_ptr->polygon().points().at(0);
-  Vec2d right_bottom_point = target_parking_spot_ptr->polygon().points().at(1);
+  // get the dead end points
   const auto &routing_request =
       frame.local_view().routing->routing_request();
-  auto corner_point =
-      routing_request.parking_info().corner_point();
-  left_bottom_point.set_x(corner_point.point().at(0).x());
-  left_bottom_point.set_y(corner_point.point().at(0).y());
-  right_bottom_point.set_x(corner_point.point().at(1).x());
-  right_bottom_point.set_y(corner_point.point().at(1).y());
-  double left_bottom_point_s = 0.0;
-  double left_bottom_point_l = 0.0;
-  double right_bottom_point_s = 0.0;
-  double right_bottom_point_l = 0.0;
-  nearby_path.GetNearestPoint(left_bottom_point, &left_bottom_point_s,
-                              &left_bottom_point_l);
-  nearby_path.GetNearestPoint(right_bottom_point, &right_bottom_point_s,
-                              &right_bottom_point_l);
-  double parking_space_center_s =
-      (left_bottom_point_s + right_bottom_point_s) / 2.0;
+  auto guillotine_point =
+      routing_request.dead_end().guillotine_point();
+  size_t points_num = guillotine_point.point().size();
+  double maximum_s = 0.0;
+  double maximum_l = 0.0;
+  for(size_t i = 0; i < points_num; ++i) {
+    // get the s of point
+    double max_s = 0.0;
+    double max_l = 0.0;
+    Vec2d dead_end_point(guillotine_point.point().at(i).x(),
+                         guillotine_point.point().at(i).y());
+    bool nearest_flag = nearby_path.GetNearestPoint(dead_end_point, &max_s, &max_l);
+    if (nearest_flag) {
+      if (max_s > maximum_s) {
+        maximum_s = max_s;
+      }
+      if (max_l > maximum_l) {
+        maximum_l = max_l;
+      }
+    }
+  }
+
+  // judge logic
   double vehicle_point_s = 0.0;
   double vehicle_point_l = 0.0;
   Vec2d vehicle_vec(vehicle_state.x(), vehicle_state.y());
   nearby_path.GetNearestPoint(vehicle_vec, &vehicle_point_s, &vehicle_point_l);
-  if (std::abs(parking_space_center_s - vehicle_point_s) <
-      parking_start_range) {
+  if (std::abs(maximum_s - vehicle_point_s) <
+      turn_start_range) {
     return true;
   } else {
     return false;

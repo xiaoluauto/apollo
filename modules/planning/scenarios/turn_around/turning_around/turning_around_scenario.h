@@ -36,7 +36,7 @@ namespace turning_around {
 
 struct TurningAroundContext {// keng
   ScenarioTurningAroundConfig scenario_config;
-  std::string target_parking_spot_id;
+  std::string target_dead_end_id;
   bool pre_stop_rightaway_flag = false;
   hdmap::MapPathPoint pre_stop_rightaway_point;
 };
@@ -55,21 +55,21 @@ class TurningAroundScenario : public Scenario {
       const std::shared_ptr<DependencyInjector>& injector) override;
 
   static bool IsTransferable(const Frame& frame,
-                             const double parking_start_range);
+                             const double turn_start_range);
 
   TurningAroundContext* GetContext() { return &context_; }
 
  private:
   static void RegisterStages();
   bool GetScenarioConfig();
-  static bool SearchTargetParkingSpotOnPath(
-      const hdmap::Path& nearby_path, const std::string& target_parking_id,
-      hdmap::PathOverlap* parking_space_overlap);
-  static bool CheckDistanceToParkingSpot(
+  static bool SearchTargetDeadEndOnPath(
+      const hdmap::Path& nearby_path, const std::string& dead_end_id,
+      hdmap::PathOverlap* dead_end_overlap);
+  static bool CheckDistanceToDeadEnd(
       const Frame& frame,
       const common::VehicleState& vehicle_state, const hdmap::Path& nearby_path,
-      const double parking_start_range,
-      const hdmap::PathOverlap& parking_space_overlap);
+      const double turn_start_range,
+      const hdmap::PathOverlap& dead_end_overlap);
 
  private:
   bool init_ = false;
