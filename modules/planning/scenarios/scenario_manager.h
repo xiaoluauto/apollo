@@ -67,6 +67,8 @@ class ScenarioManager final {
 
   ScenarioConfig::ScenarioType SelectValetParkingScenario(const Frame& frame);
 
+  ScenarioConfig::ScenarioType SelectTurningAroundScenario(const Frame& frame);
+
   ScenarioConfig::ScenarioType SelectYieldSignScenario(
       const Frame& frame, const hdmap::PathOverlap& yield_sign_overlap);
 

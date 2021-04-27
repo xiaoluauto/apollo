@@ -170,6 +170,7 @@ Status OpenSpaceTrajectoryProvider::Process() {
       GenerateStopTrajectory(trajectory_data);
       is_generation_thread_stop_.store(true);
       temp_trajectory.set_complete_parking(true);
+      temp_trajectory.set_complete_turning_around(true);
       return Status(ErrorCode::OK, "Vehicle is near to destination");
     }
 
@@ -235,6 +236,7 @@ Status OpenSpaceTrajectoryProvider::Process() {
                                  translate_origin)) {
       GenerateStopTrajectory(trajectory_data);
       temp_trajectory.set_complete_parking(true);
+      temp_trajectory.set_complete_turning_around(true);
       return Status(ErrorCode::OK, "Vehicle is near to destination");
     }
 

@@ -49,7 +49,7 @@ class TurningAroundScenario : public Scenario {
       : Scenario(config, context, injector) {}
 
   void Init() override;
-
+  static double ComputeMaxS(const Frame& frame, const hdmap::Path& nearby_path);
   std::unique_ptr<Stage> CreateStage(
       const ScenarioConfig::StageConfig& stage_config,
       const std::shared_ptr<DependencyInjector>& injector) override;

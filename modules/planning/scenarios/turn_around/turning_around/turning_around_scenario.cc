@@ -133,7 +133,7 @@ bool TurningAroundScenario::IsTransferable(const Frame& frame,
   }
 
   if (!CheckDistanceToDeadEnd(frame, vehicle_state, nearby_path,
-                                  turn_start_range, dead_end_overlap)) {
+                              turn_start_range, dead_end_overlap)) {
     ADEBUG << "target dead end found, but too far, distance larger than "
               "pre-defined distance"
            << dead_end_id;
@@ -156,20 +156,8 @@ bool TurningAroundScenario::SearchTargetDeadEndOnPath(
   return false;
 }
 
-bool TurningAroundScenario::CheckDistanceToDeadEnd(
-    const Frame& frame,
-    const VehicleState& vehicle_state, const Path& nearby_path,
-    const double turn_start_range,
-    const PathOverlap& dead_end_overlap) {
-  // get the hdmap pointer
-  const hdmap::HDMap* hdmap = hdmap::HDMapUtil::BaseMapPtr();
-  hdmap::Id id;
-  id.set_id(dead_end_overlap.object_id);
-  // get the dead_end pointer by the id, by the map colleague!!!!!! will be change
-  // changing !!!!!!!!!!!!!
-  ParkingSpaceInfoConstPtr target_parking_spot_ptr =
-      hdmap->GetParkingSpaceById(id);
-  // get the dead end points
+double TurningAroundScenario::ComputeMaxS(const Frame& frame,
+                                          const Path& nearby_path) {
   const auto &routing_request =
       frame.local_view().routing->routing_request();
   auto guillotine_point =
@@ -193,6 +181,24 @@ bool TurningAroundScenario::CheckDistanceToDeadEnd(
       }
     }
   }
+  return maximum_s;
+}
+
+bool TurningAroundScenario::CheckDistanceToDeadEnd(
+    const Frame& frame,
+    const VehicleState& vehicle_state, const Path& nearby_path,
+    const double turn_start_range,
+    const PathOverlap& dead_end_overlap) {
+  // get the hdmap pointer
+  // const hdmap::HDMap* hdmap = hdmap::HDMapUtil::BaseMapPtr();
+  hdmap::Id id;
+  id.set_id(dead_end_overlap.object_id);
+  // get the dead_end pointer by the id, by the map colleague!!!!!! will be change
+  // changing !!!!!!!!!!!!!
+  // ParkingSpaceInfoConstPtr target_parking_spot_ptr =
+  //     hdmap->GetParkingSpaceById(id);
+  // get the dead end points
+  double maximum_s = ComputeMaxS(frame, nearby_path);
 
   // judge logic
   double vehicle_point_s = 0.0;

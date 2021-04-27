@@ -37,9 +37,9 @@ Stage::StageStatus StageApproachingTurningPoint::Process(
       frame->local_view().routing->routing_request().dead_end()
       .has_dead_end_id()) {
     GetContext()->target_dead_end_id = frame->local_view()
-                                .routing->routing_request()
-                                .dead_end()
-                                .dead_end_id();
+                                       .routing->routing_request()
+                                       .dead_end()
+                                       .dead_end_id();
   } else {
     AERROR << "No dead end id from routing";
     return StageStatus::ERROR;

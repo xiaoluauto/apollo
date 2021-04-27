@@ -62,6 +62,14 @@ Status OpenSpacePreStopDecider::Process(
       }
       SetParkingSpotStopFence(target_s, frame, reference_line_info);
       break;
+    case OpenSpacePreStopDeciderConfig::TURNING_AROUND:
+      if (!CheckDeadEndPreStop(frame, reference_line_info, &target_s)) {
+        const std::string msg = "Checking dead end pre stop fails";
+        AERROR << msg;
+        return Status(ErrorCode::PLANNING_ERROR, msg);
+      }
+      SetDeadEndFence(target_s, frame, reference_line_info);      
+      break;
     case OpenSpacePreStopDeciderConfig::PULL_OVER:
       if (!CheckPullOverPreStop(frame, reference_line_info, &target_s)) {
         const std::string msg = "Checking pull over pre stop fails";
@@ -76,6 +84,106 @@ Status OpenSpacePreStopDecider::Process(
       return Status(ErrorCode::PLANNING_ERROR, msg);
   }
   return Status::OK();
+}
+
+bool OpenSpacePreStopDecider::CheckDeadEndPreStop(
+    Frame* const frame, ReferenceLineInfo* const reference_line_info,
+    double* target_s) {
+  const auto &routing_request =
+      frame->local_view().routing->routing_request();
+  auto guillotine_point =
+      routing_request.dead_end().guillotine_point();
+  const auto& target_dead_end_id =
+      frame->open_space_info().target_dead_end_id();
+  const auto& nearby_path = reference_line_info->reference_line().map_path();
+  if (target_dead_end_id.empty()) {
+    AERROR << "no target dead end id found when setting pre stop fence";
+    return false;
+  }
+  // get the dead_end_overlaps
+  double maximum_s = 0.0;
+  double maximum_l = 0.0;
+  bool target_area_found = false;
+  const auto& dead_end_overlaps = nearby_path.dead_end_overlaps();
+  for (const auto& dead_end_overlap :dead_end_overlaps) {
+    if (dead_end_overlap.object_id == target_dead_end_id) {
+      // select the max s
+      size_t points_num = guillotine_point.point().size();
+      for(size_t i = 0; i < points_num; ++i) {
+        // get the s of pointSetDeadEndFence
+        double max_s = 0.0;
+        double max_l = 0.0;
+        Vec2d dead_end_point(guillotine_point.point().at(i).x(),
+                             guillotine_point.point().at(i).y());
+        bool nearest_flag = nearby_path.GetNearestPoint(dead_end_point, &max_s, &max_l);
+        if (nearest_flag) {
+          if (max_s > maximum_s) {
+            maximum_s = max_s;
+          }
+          if (max_l > maximum_l) {
+            maximum_l = max_l;
+          }
+        }
+      }
+      target_area_found = true;
+    }
+  }
+  if (!target_area_found) {
+    AERROR << "no target dead end found on reference line";
+    return false;
+  }
+  *target_s = maximum_s;
+  return true;
+}
+
+void OpenSpacePreStopDecider::SetDeadEndFence(
+    const double target_s, Frame* const frame,
+    ReferenceLineInfo* const reference_line_info) {
+  const auto& nearby_path = reference_line_info->reference_line().map_path();
+  const double adc_front_edge_s = reference_line_info->AdcSlBoundary().end_s();
+  const VehicleState& vehicle_state = frame->vehicle_state();
+  double stop_line_s = 0.0;
+  double turn_around_stop_distance_to_target =
+      open_space_pre_stop_decider_config_.turn_around_stop_distance_to_target();
+  double static_linear_velocity_epsilon = 1.0e-2;
+  CHECK_GE(turn_around_stop_distance_to_target, 1.0e-8);
+  double target_vehicle_offset = target_s - adc_front_edge_s;
+  if (target_vehicle_offset > turn_around_stop_distance_to_target) {
+    stop_line_s = target_s - turn_around_stop_distance_to_target;
+  } else if (std::abs(target_vehicle_offset) < turn_around_stop_distance_to_target) {
+    stop_line_s = target_s + turn_around_stop_distance_to_target;
+  } else if (target_vehicle_offset < -turn_around_stop_distance_to_target) {
+    if (!frame->open_space_info().pre_stop_rightaway_flag()) {
+      // TODO: Use constant comfortable deacceleration 
+      // rather than distance by config to set stop fence
+      stop_line_s =
+          adc_front_edge_s +
+          open_space_pre_stop_decider_config_.rightaway_stop_distance();
+      if (std::abs(vehicle_state.linear_velocity()) <
+          static_linear_velocity_epsilon) {
+        stop_line_s = adc_front_edge_s;
+      }
+      *(frame->mutable_open_space_info()->mutable_pre_stop_rightaway_point()) =
+          nearby_path.GetSmoothPoint(stop_line_s);
+      frame->mutable_open_space_info()->set_pre_stop_rightaway_flag(true);
+    } else {
+      double stop_point_s = 0.0;
+      double stop_point_l = 0.0;
+      nearby_path.GetNearestPoint(
+          frame->open_space_info().pre_stop_rightaway_point(), &stop_point_s,
+          &stop_point_l);
+      stop_line_s = stop_point_s;
+    }
+  }
+
+  const std::string stop_wall_id = OPEN_SPACE_STOP_ID;
+  std::vector<std::string> wait_for_obstacles;
+  frame->mutable_open_space_info()->set_open_space_pre_stop_fence_s(
+      stop_line_s);
+  util::BuildStopDecision(stop_wall_id, stop_line_s, 0.0,
+                          StopReasonCode::STOP_REASON_PRE_OPEN_SPACE_STOP,
+                          wait_for_obstacles, "OpenSpacePreStopDecider", frame,
+                          reference_line_info);
 }
 
 bool OpenSpacePreStopDecider::CheckPullOverPreStop(

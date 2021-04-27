@@ -474,6 +474,7 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectStopSignScenario(
     case ScenarioConfig::TRAFFIC_LIGHT_UNPROTECTED_RIGHT_TURN:
     case ScenarioConfig::YIELD_SIGN:
     case ScenarioConfig::VALET_PARKING:
+    case ScenarioConfig::TURNING_AROUND:
       if (current_scenario_->GetStatus() !=
           Scenario::ScenarioStatus::STATUS_DONE) {
         return current_scenario_->scenario_type();
@@ -610,6 +611,7 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectTrafficLightScenario(
     case ScenarioConfig::TRAFFIC_LIGHT_UNPROTECTED_RIGHT_TURN:
     case ScenarioConfig::YIELD_SIGN:
     case ScenarioConfig::VALET_PARKING:
+    case ScenarioConfig::TURNING_AROUND:
       if (current_scenario_->GetStatus() !=
           Scenario::ScenarioStatus::STATUS_DONE) {
         return current_scenario_->scenario_type();
@@ -659,6 +661,7 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectYieldSignScenario(
     case ScenarioConfig::TRAFFIC_LIGHT_UNPROTECTED_RIGHT_TURN:
     case ScenarioConfig::YIELD_SIGN:
     case ScenarioConfig::VALET_PARKING:
+    case ScenarioConfig::TURNING_AROUND:
       if (current_scenario_->GetStatus() !=
           Scenario::ScenarioStatus::STATUS_DONE) {
         return current_scenario_->scenario_type();
@@ -713,6 +716,7 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectBareIntersectionScenario(
     case ScenarioConfig::TRAFFIC_LIGHT_UNPROTECTED_RIGHT_TURN:
     case ScenarioConfig::YIELD_SIGN:
     case ScenarioConfig::VALET_PARKING:
+    case ScenarioConfig::TURNING_AROUND:
       if (current_scenario_->GetStatus() !=
           Scenario::ScenarioStatus::STATUS_DONE) {
         return current_scenario_->scenario_type();
@@ -738,6 +742,19 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectValetParkingScenario(
     return ScenarioConfig::VALET_PARKING;
   }
 
+  return default_scenario_type_;
+}
+
+ScenarioConfig::ScenarioType ScenarioManager::SelectTurningAroundScenario(
+    const Frame& frame) {
+  const auto& scenario_config = 
+      config_map_[ScenarioConfig::TURNING_AROUND].turning_around_config();
+  double turn_around_range_to_start =
+      scenario_config.turn_around_range_to_start();
+  if (scenario::turning_around::TurningAroundScenario::IsTransferable(
+          frame, turn_around_range_to_start)) {
+    return ScenarioConfig::TURNING_AROUND;
+  }
   return default_scenario_type_;
 }
 
@@ -833,7 +850,15 @@ void ScenarioManager::ScenarioDispatch(const Frame& frame) {
   } else {
     scenario_type = ScenarioDispatchNonLearning(frame);
   }
-
+  // from turn around to lane follow
+  auto* previous_frame = injector_->frame_history()->Latest();
+  ADCTrajectory &temp_trajectory =
+    const_cast<ADCTrajectory&> (previous_frame->
+                                current_frame_planned_trajectory());
+  if (temp_trajectory.complete_turning_around()) {
+    scenario_type = ScenarioConfig::LANE_FOLLOW;
+  }
+  
   ADEBUG << "select scenario: "
          << ScenarioConfig::ScenarioType_Name(scenario_type);
 
@@ -878,6 +903,7 @@ ScenarioConfig::ScenarioType ScenarioManager::ScenarioDispatchNonLearning(
       case ScenarioConfig::TRAFFIC_LIGHT_UNPROTECTED_LEFT_TURN:
       case ScenarioConfig::TRAFFIC_LIGHT_UNPROTECTED_RIGHT_TURN:
       case ScenarioConfig::VALET_PARKING:
+      case ScenarioConfig::TURNING_AROUND:
       case ScenarioConfig::YIELD_SIGN:
         // must continue until finish
         if (current_scenario_->GetStatus() !=
@@ -917,6 +943,13 @@ ScenarioConfig::ScenarioType ScenarioManager::ScenarioDispatchNonLearning(
   if (scenario_type == default_scenario_type_) {
     scenario_type = SelectValetParkingScenario(frame);
   }
+
+  ////////////////////////////////////////
+  // turning_around scenario
+  if (scenario_type == default_scenario_type_) {
+    scenario_type = SelectTurningAroundScenario(frame);
+  }
+  
 
   return scenario_type;
 }

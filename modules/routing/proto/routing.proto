@@ -36,6 +36,7 @@ message ParkingInfo {
 message DeadEnd {
   optional string dead_end_id =1;
   optional apollo.hdmap.Polygon guillotine_point = 2;
+  optional apollo.common.PointENU turn_around_target_point = 3;
 }
 
 message RoutingRequest {

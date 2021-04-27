@@ -90,6 +90,14 @@ class OpenSpaceInfo {
     return target_parking_lane_;
   }
 
+  const hdmap::LaneInfoConstPtr target_dead_end_lane() const {
+    return target_dead_end_lane_;
+  }
+  
+  void set_target_dead_end_lane(hdmap::LaneInfoConstPtr lane_info_const_ptr) {
+    target_dead_end_lane_ = lane_info_const_ptr;
+  }
+
   void set_target_parking_lane(hdmap::LaneInfoConstPtr lane_info_const_ptr) {
     target_parking_lane_ = lane_info_const_ptr;
   }
@@ -323,6 +331,8 @@ class OpenSpaceInfo {
   hdmap::ParkingSpaceInfoConstPtr target_parking_spot_ = nullptr;
 
   hdmap::LaneInfoConstPtr target_parking_lane_ = nullptr;
+
+  hdmap::LaneInfoConstPtr target_dead_end_lane_ = nullptr;
 
   double open_space_pre_stop_fence_s_ = 0.0;
 

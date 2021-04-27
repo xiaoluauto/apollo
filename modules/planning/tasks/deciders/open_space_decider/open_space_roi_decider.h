@@ -58,7 +58,12 @@ class OpenSpaceRoiDecider : public Decider {
   bool GetParkingSpot(Frame *const frame,
                       std::array<common::math::Vec2d, 4> *vertices,
                       hdmap::Path *nearby_path);
-
+  
+  // @brief get the dead end message
+  bool GetDeadEnd(Frame *const frame,
+                  hdmap::Path *nearby_path);
+  bool CheckDistanceToDeadEnd(Frame *const frame,
+                              const hdmap::Path &nearby_path);
   // @brief get path from reference line and return vertices of pullover spot
   bool GetPullOverSpot(Frame *const frame,
                        std::array<common::math::Vec2d, 4> *vertices,
@@ -67,10 +72,11 @@ class OpenSpaceRoiDecider : public Decider {
   // @brief Set an origin to normalize the problem for later computation
   void SetOrigin(Frame *const frame,
                  const std::array<common::math::Vec2d, 4> &vertices);
+  void SetDeadEndOrigin(Frame *const frame);
   void SetOriginFromADC(Frame *const frame, const hdmap::Path &nearby_path);
   void SetParkingSpotEndPose(
       Frame *const frame, const std::array<common::math::Vec2d, 4> &vertices);
-
+  void SetDeadEndTargetPose(Frame *const frame);
   void SetPullOverSpotEndPose(Frame *const frame);
   void SetParkAndGoEndPose(Frame *const frame);
 
@@ -138,7 +144,11 @@ class OpenSpaceRoiDecider : public Decider {
   bool GetParkAndGoBoundary(Frame *const frame, const hdmap::Path &nearby_path,
                             std::vector<std::vector<common::math::Vec2d>>
                                 *const roi_parking_boundary);
-
+  bool GetDeadEndBoundary(Frame *const frame,
+                          const hdmap::Path &nearby_path,
+                          std::vector<std::vector<common::math::Vec2d>>
+                              *const roi_parking_boundary);
+  double ComputeMaxS(const Frame* frame, const hdmap::Path& nearby_path);
   // @brief search target parking spot on the path by vehicle location, if
   // no return a nullptr in target_parking_spot
   void SearchTargetParkingSpotOnPath(
@@ -200,6 +210,8 @@ class OpenSpaceRoiDecider : public Decider {
  private:
   // @brief parking_spot_id from routing
   std::string target_parking_spot_id_;
+  
+  std::string target_dead_end_id_; 
 
   const hdmap::HDMap *hdmap_ = nullptr;
 

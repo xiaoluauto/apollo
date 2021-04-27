@@ -66,7 +66,7 @@ Status OpenSpaceRoiDecider::Process(Frame *frame) {
   // @brief vector of different obstacle consisting of vertice points.The
   // obstacle and the vertices order are in counter-clockwise order
   std::vector<std::vector<common::math::Vec2d>> roi_boundary;
-
+  std::vector<std::vector<common::math::Vec2d>> dead_end_boundary;
   const auto &roi_type = config_.open_space_roi_decider_config().roi_type();
   if (roi_type == OpenSpaceRoiDeciderConfig::PARKING) {
     const auto &routing_request =
@@ -94,6 +94,31 @@ Status OpenSpaceRoiDecider::Process(Frame *frame) {
 
     if (!GetParkingBoundary(frame, spot_vertices, nearby_path, &roi_boundary)) {
       const std::string msg = "Fail to get parking boundary from map";
+      AERROR << msg;
+      return Status(ErrorCode::PLANNING_ERROR, msg);
+    }
+  } else if (roi_type == OpenSpaceRoiDeciderConfig::TURNING_AROUND) {
+    const auto &routing_request =
+        frame->local_view().routing->routing_request();
+    if (routing_request.has_dead_end() &&
+        routing_request.dead_end().has_dead_end_id()) {
+      target_dead_end_id_ =
+          routing_request.dead_end().dead_end_id();
+    } else {
+      const std::string msg = "Failed to get dead end id from routing";
+      AERROR << msg;
+      return Status(ErrorCode::PLANNING_ERROR, msg);
+    }
+    // get the message of dead end
+    if (!GetDeadEnd(frame, &nearby_path)) {
+      const std::string msg = "Fail to get dead end from map";
+      AERROR << msg;
+      return Status(ErrorCode::PLANNING_ERROR, msg);
+    }
+    SetDeadEndOrigin(frame);
+    SetDeadEndTargetPose(frame);
+    if (!GetDeadEndBoundary(frame, nearby_path, &dead_end_boundary)) {
+      const std::string msg = "Fail to get dead end boundary from map";
       AERROR << msg;
       return Status(ErrorCode::PLANNING_ERROR, msg);
     }
@@ -209,6 +234,332 @@ void OpenSpaceRoiDecider::SetOrigin(
   frame->mutable_open_space_info()->set_origin_heading(heading_vec.Angle());
   frame->mutable_open_space_info()->mutable_origin_point()->set_x(left_top.x());
   frame->mutable_open_space_info()->mutable_origin_point()->set_y(left_top.y());
+}
+
+void OpenSpaceRoiDecider::SetDeadEndOrigin(Frame *const frame) {
+  const auto &routing_request =
+        frame->local_view().routing->routing_request();
+  size_t points_num = routing_request.dead_end().
+                      guillotine_point().point().size();
+  auto start_point_x =
+      routing_request.dead_end().guillotine_point().point().at(0).x();
+  auto end_point_x =
+      routing_request.dead_end().guillotine_point().point().at(points_num).x();
+  auto start_point_y =
+      routing_request.dead_end().guillotine_point().point().at(0).y();
+  auto end_point_y =
+      routing_request.dead_end().guillotine_point().point().at(points_num).y();
+  Vec2d start_point;
+  Vec2d end_point;
+  start_point.set_x(start_point_x);
+  start_point.set_y(start_point_y);
+  end_point.set_x(end_point_x);
+  end_point.set_y(end_point_y);
+  Vec2d heading_vec = end_point - start_point;
+  frame->mutable_open_space_info()->set_origin_heading(heading_vec.Angle());
+  frame->mutable_open_space_info()->mutable_origin_point()->set_x(
+    start_point.x());
+  frame->mutable_open_space_info()->mutable_origin_point()->set_y(
+    start_point.y());
+}
+
+void OpenSpaceRoiDecider::SetDeadEndTargetPose(Frame *const frame) {
+  // get the target point after turn around
+  const auto &routing_request =
+        frame->local_view().routing->routing_request();
+  const double x = routing_request.dead_end().turn_around_target_point().x();
+  const double y = routing_request.dead_end().turn_around_target_point().y();
+  auto *end_pose =
+      frame->mutable_open_space_info()->mutable_open_space_end_pose();
+  end_pose->push_back(x);
+  end_pose->push_back(y);
+  end_pose->push_back(0.0);
+}
+
+bool OpenSpaceRoiDecider::GetDeadEndBoundary(
+    Frame *const frame,
+    const hdmap::Path &nearby_path,
+    std::vector<std::vector<common::math::Vec2d>> *const dead_end_boundary) {
+  // !!!!!!!!!!!the nearby path may be change!!!!!!!!! compelte the frame
+  const auto &origin_point = frame->open_space_info().origin_point();
+  const auto &origin_heading = frame->open_space_info().origin_heading();
+  const auto &routing_request =
+        frame->local_view().routing->routing_request();
+  size_t points_num = routing_request.dead_end().
+                      guillotine_point().point().size();
+  auto start_point_x =
+      routing_request.dead_end().guillotine_point().point().at(0).x();
+  auto end_point_x =
+      routing_request.dead_end().guillotine_point().point().at(points_num).x();
+  auto start_point_y =
+      routing_request.dead_end().guillotine_point().point().at(0).y();
+  auto end_point_y =
+      routing_request.dead_end().guillotine_point().point().at(points_num).y();
+  Vec2d start_point = {start_point_x, start_point_y};
+  Vec2d end_point = {end_point_x, end_point_y};
+  double start_s = 0.0;
+  double start_l = 0.0;
+  double end_s = 0.0;
+  double end_l = 0.0;
+  if (!(nearby_path.GetProjection(start_point, &start_s, &start_l) &&
+        nearby_path.GetProjection(end_point, &end_s, &end_l))) {
+    AERROR << "fail to get dead end points' projections on reference line";
+    return false;
+  }
+  const double center_line_s = (start_s + end_s) / 2.0;
+  std::vector<Vec2d> left_lane_boundary;
+  std::vector<Vec2d> right_lane_boundary;
+  // The pivot points on the central lane, mapping with the key points on
+  // the left lane boundary.
+  std::vector<Vec2d> center_lane_boundary_left;
+  // The pivot points on the central lane, mapping with the key points on
+  // the right lane boundary.
+  std::vector<Vec2d> center_lane_boundary_right;
+  // The s-value for the anchor points on the center_lane_boundary_left.
+  std::vector<double> center_lane_s_left;
+  // The s-value for the anchor points on the center_lane_boundary_right.
+  std::vector<double> center_lane_s_right;
+  // The left-half road width between the pivot points on the
+  // center_lane_boundary_left and key points on the
+  // left_lane_boundary.
+  std::vector<double> left_lane_road_width;
+  // The right-half road width between the pivot points on the
+  // center_lane_boundary_right and key points on the
+  // right_lane_boundary.
+  std::vector<double> right_lane_road_width;
+
+  GetRoadBoundary(nearby_path, center_line_s, origin_point, origin_heading,
+                  &left_lane_boundary, &right_lane_boundary,
+                  &center_lane_boundary_left, &center_lane_boundary_right,
+                  &center_lane_s_left, &center_lane_s_right,
+                  &left_lane_road_width, &right_lane_road_width);
+
+  // If smaller than zero, the parking spot is on the right of the lane
+  // Left, right, down or opposite of the boundary is decided when viewing the
+  // parking spot upward
+  const double average_l = (start_l + end_l) / 2.0;
+  std::vector<Vec2d> boundary_points;
+
+  // TODO(jiaxuan): Write a half-boundary formation function and call it twice
+  // to avoid duplicated manipulations on the left and right sides
+
+    // if average_l is lower than zero, the parking spot is on the right
+    // lane boundary and assume that the lane half width is average_l
+    ADEBUG << "average_l is less than 0 in OpenSpaceROI";
+    size_t point_size = right_lane_boundary.size();
+    for (size_t i = 0; i < point_size; i++) {
+      right_lane_boundary[i].SelfRotate(origin_heading);
+      right_lane_boundary[i] += origin_point;
+      right_lane_boundary[i] -= center_lane_boundary_right[i];
+      right_lane_boundary[i] /= right_lane_road_width[i];
+      right_lane_boundary[i] *= (-average_l);
+      right_lane_boundary[i] += center_lane_boundary_right[i];
+      right_lane_boundary[i] -= origin_point;
+      right_lane_boundary[i].SelfRotate(-origin_heading);
+    }
+
+    auto point_left_to_left_top_connor_s = std::lower_bound(
+        center_lane_s_right.begin(), center_lane_s_right.end(), start_s);
+    size_t point_left_to_left_top_connor_index = std::distance(
+        center_lane_s_right.begin(), point_left_to_left_top_connor_s);
+    point_left_to_left_top_connor_index =
+        point_left_to_left_top_connor_index == 0
+            ? point_left_to_left_top_connor_index
+            : point_left_to_left_top_connor_index - 1;
+    auto point_left_to_left_top_connor_itr =
+        right_lane_boundary.begin() + point_left_to_left_top_connor_index;
+    auto point_right_to_right_top_connor_s = std::upper_bound(
+        center_lane_s_right.begin(), center_lane_s_right.end(), end_s);
+    size_t point_right_to_right_top_connor_index = std::distance(
+        center_lane_s_right.begin(), point_right_to_right_top_connor_s);
+    auto point_right_to_right_top_connor_itr =
+        right_lane_boundary.begin() + point_right_to_right_top_connor_index;
+
+    std::copy(right_lane_boundary.begin(), point_left_to_left_top_connor_itr,
+              std::back_inserter(boundary_points));
+    
+    std::vector<Vec2d> dead_points_boundary;
+    for(size_t i = 0; i < points_num; ++i) {
+      double point_x = routing_request.dead_end().
+                       guillotine_point().point().at(i).x();
+      double point_y = routing_request.dead_end().
+                       guillotine_point().point().at(i).y();
+      Vec2d dead_point;
+      dead_point.set_x(point_x);
+      dead_point.set_y(point_y);
+      dead_points_boundary.emplace_back(dead_point);
+    }
+    
+    std::copy(dead_points_boundary.begin(), dead_points_boundary.end(),
+              std::back_inserter(boundary_points));
+
+    std::copy(point_right_to_right_top_connor_itr, right_lane_boundary.end(),
+              std::back_inserter(boundary_points));
+
+    std::reverse_copy(left_lane_boundary.begin(), left_lane_boundary.end(),
+                      std::back_inserter(boundary_points));
+
+    // reinsert the initial point to the back to from closed loop
+    boundary_points.push_back(right_lane_boundary.front());
+
+    // disassemble line into line2d segments
+    for (size_t i = 0; i < point_left_to_left_top_connor_index; i++) {
+      std::vector<Vec2d> segment{right_lane_boundary[i],
+                                 right_lane_boundary[i + 1]};
+      dead_end_boundary->push_back(segment);
+    }
+
+    std::vector<Vec2d> left_stitching_segment{
+        right_lane_boundary[point_left_to_left_top_connor_index], start_point};
+    dead_end_boundary->push_back(left_stitching_segment);
+    
+    for(size_t i = 0; i < points_num - 1; ++i) {
+      std::vector<Vec2d> dead_points_segment{
+        {routing_request.dead_end().guillotine_point().point().at(i).x(),
+         routing_request.dead_end().guillotine_point().point().at(i).y()},
+        {routing_request.dead_end().guillotine_point().point().at(i+1).x(),
+         routing_request.dead_end().guillotine_point().point().at(i+1).y()}};
+      dead_end_boundary->push_back(dead_points_segment);
+    }
+
+    std::vector<Vec2d> right_stitching_segment{
+        end_point, right_lane_boundary[point_right_to_right_top_connor_index]};
+    dead_end_boundary->push_back(right_stitching_segment);
+
+    size_t right_lane_boundary_last_index = right_lane_boundary.size() - 1;
+    for (size_t i = point_right_to_right_top_connor_index;
+         i < right_lane_boundary_last_index; i++) {
+      std::vector<Vec2d> segment{right_lane_boundary[i],
+                                 right_lane_boundary[i + 1]};
+      dead_end_boundary->push_back(segment);
+    }
+
+    size_t left_lane_boundary_last_index = left_lane_boundary.size() - 1;
+    for (size_t i = left_lane_boundary_last_index; i > 0; i--) {
+      std::vector<Vec2d> segment{left_lane_boundary[i],
+                                 left_lane_boundary[i - 1]};
+      dead_end_boundary->push_back(segment);
+    }
+  
+
+  // Fuse line segments into convex contraints
+  if (!FuseLineSegments(dead_end_boundary)) {
+    AERROR << "FuseLineSegments failed in parking ROI";
+    return false;
+  }
+  // Get xy boundary
+  auto xminmax = std::minmax_element(
+      boundary_points.begin(), boundary_points.end(),
+      [](const Vec2d &a, const Vec2d &b) { return a.x() < b.x(); });
+  auto yminmax = std::minmax_element(
+      boundary_points.begin(), boundary_points.end(),
+      [](const Vec2d &a, const Vec2d &b) { return a.y() < b.y(); });
+  std::vector<double> ROI_xy_boundary{xminmax.first->x(), xminmax.second->x(),
+                                      yminmax.first->y(), yminmax.second->y()};
+  auto *xy_boundary =
+      frame->mutable_open_space_info()->mutable_ROI_xy_boundary();
+  xy_boundary->assign(ROI_xy_boundary.begin(), ROI_xy_boundary.end());
+
+  Vec2d vehicle_xy = Vec2d(vehicle_state_.x(), vehicle_state_.y());
+  vehicle_xy -= origin_point;
+  vehicle_xy.SelfRotate(-origin_heading);
+  if (vehicle_xy.x() < ROI_xy_boundary[0] ||
+      vehicle_xy.x() > ROI_xy_boundary[1] ||
+      vehicle_xy.y() < ROI_xy_boundary[2] ||
+      vehicle_xy.y() > ROI_xy_boundary[3]) {
+    AERROR << "vehicle outside of xy boundary of parking ROI";
+    return false;
+  }
+  return true;
+}
+
+bool OpenSpaceRoiDecider::GetDeadEnd(Frame *const frame,
+                                     Path *nearby_path) {
+  if (frame == nullptr) {
+    AERROR << "Invalid frame, fail to GetDeadEndFromMap from frame. ";
+    return false;
+  }
+
+  auto point = common::util::PointFactory::ToPointENU(vehicle_state_);
+  LaneInfoConstPtr nearest_lane; // the nearest lane
+  double vehicle_lane_s = 0.0;
+  double vehicle_lane_l = 0.0;
+  // Check if last frame lane is available
+  const auto &ptr_last_frame = injector_->frame_history()->Latest();
+
+  if (ptr_last_frame == nullptr) {
+    AERROR << "Last frame failed, fail to GetDeadEndfrom frame "
+              "history.";
+    return false;
+  }
+
+  const auto &previous_open_space_info = ptr_last_frame->open_space_info(); // get open space info
+  if (previous_open_space_info.target_dead_end_lane() != nullptr &&
+      previous_open_space_info.target_dead_end_id() ==
+          frame->open_space_info().target_dead_end_id()) {
+    nearest_lane = previous_open_space_info.target_dead_end_lane();
+  } else {
+    int status = HDMapUtil::BaseMap().GetNearestLaneWithHeading(
+        point, 10.0, vehicle_state_.heading(), M_PI / 2.0, &nearest_lane,
+        &vehicle_lane_s, &vehicle_lane_l);
+    if (status != 0) {
+      AERROR
+          << "Getlane failed at OpenSpaceRoiDecider::GetDeadEndFromMap()";
+      return false;
+    }
+  }
+  frame->mutable_open_space_info()->set_target_dead_end_lane(nearest_lane);
+
+  // Find parking spot by getting nearestlane
+  // this part delay the map conlenge, will be change!!!!!!!!
+  ParkingSpaceInfoConstPtr target_parking_spot = nullptr;
+  // get the nearest lanesegment
+  LaneSegment nearest_lanesegment =
+      LaneSegment(nearest_lane, nearest_lane->accumulate_s().front(),
+                  nearest_lane->accumulate_s().back()); // construct the lanesegment
+  std::vector<LaneSegment> segments_vector; // define the segments vector
+  int next_lanes_num = nearest_lane->lane().successor_id_size(); // houji lane num
+  // get the segments vector of nearest lane and it's next lanes
+  if (next_lanes_num != 0) {
+    for (int i = 0; i < next_lanes_num; ++i) {
+      auto next_lane_id = nearest_lane->lane().successor_id(i);
+      segments_vector.push_back(nearest_lanesegment); // push
+      auto next_lane = hdmap_->GetLaneById(next_lane_id);
+      LaneSegment next_lanesegment =
+          LaneSegment(next_lane, next_lane->accumulate_s().front(),
+                      next_lane->accumulate_s().back());
+      segments_vector.push_back(next_lanesegment); // push
+      size_t succeed_lanes_num = next_lane->lane().successor_id_size();
+      if (succeed_lanes_num != 0) {
+        for (size_t j = 0; j < succeed_lanes_num; j++) {
+          auto succeed_lane_id = next_lane->lane().successor_id(j);
+          auto succeed_lane = hdmap_->GetLaneById(succeed_lane_id);
+          LaneSegment succeed_lanesegment =
+            LaneSegment(succeed_lane, succeed_lane->accumulate_s().front(),
+                        succeed_lane->accumulate_s().back());
+            segments_vector.push_back(succeed_lanesegment);
+        }
+      }
+      // construct nearby path by the segments vector
+      *nearby_path = Path(segments_vector);
+    }
+  } else {
+    segments_vector.push_back(nearest_lanesegment);
+    *nearby_path = Path(segments_vector);
+  }
+
+  if (target_parking_spot == nullptr) {
+    AERROR << "No such dead end found after searching all path forward "
+              "possible";
+    return false;
+  }
+
+  if (!CheckDistanceToDeadEnd(frame, *nearby_path)) {
+    AERROR << "target dead end found, but too far, distance larger than "
+              "pre-defined distance";
+    return false;
+  }
+  return true;
 }
 
 void OpenSpaceRoiDecider::SetParkingSpotEndPose(
@@ -1397,6 +1748,51 @@ void OpenSpaceRoiDecider::SearchTargetParkingSpotOnPath(
       *target_parking_spot = hdmap_->GetParkingSpaceById(id);
     }
   }
+}
+
+double OpenSpaceRoiDecider::ComputeMaxS(const Frame* frame,
+                                        const hdmap::Path& nearby_path) {
+  const auto &routing_request =
+      frame->local_view().routing->routing_request();
+  auto guillotine_point =
+      routing_request.dead_end().guillotine_point();
+  size_t points_num = guillotine_point.point().size();
+  double maximum_s = 0.0;
+  double maximum_l = 0.0;
+  for(size_t i = 0; i < points_num; ++i) {
+    // get the s of point
+    double max_s = 0.0;
+    double max_l = 0.0;
+    Vec2d dead_end_point(guillotine_point.point().at(i).x(),
+                         guillotine_point.point().at(i).y());
+    bool nearest_flag = nearby_path.GetNearestPoint(dead_end_point, &max_s, &max_l);
+    if (nearest_flag) {
+      if (max_s > maximum_s) {
+        maximum_s = max_s;
+      }
+      if (max_l > maximum_l) {
+        maximum_l = max_l;
+      }
+    }
+  }
+  return maximum_s;
+}
+
+bool OpenSpaceRoiDecider::CheckDistanceToDeadEnd(
+    Frame *const frame,
+    const hdmap::Path &nearby_path) {
+  double maximum_s = ComputeMaxS(frame, nearby_path);
+  double vehicle_point_s = 0.0;
+  double vehicle_point_l = 0.0;
+  Vec2d vehicle_vec(vehicle_state_.x(), vehicle_state_.y());
+  nearby_path.GetNearestPoint(vehicle_vec, &vehicle_point_s, &vehicle_point_l);
+  if (std::abs((maximum_s - vehicle_point_s) <
+      config_.open_space_roi_decider_config().dead_end_range())) {
+    return true;
+  } else {
+    return false;
+  }
+  return true;
 }
 
 bool OpenSpaceRoiDecider::CheckDistanceToParkingSpot(

@@ -51,6 +51,8 @@ message ROIConfig {
   optional double parking_start_range = 3 [default = 7.0];
   // Parking orientation for reverse parking
   optional bool parking_inwards = 4 [default = false];
+  // dead end range detection threshold
+  optional double dead_end_range = 5 [default = 10.0];
 }
 
 message WarmStartConfig {
