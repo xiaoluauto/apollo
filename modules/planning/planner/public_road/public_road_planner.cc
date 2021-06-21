@@ -33,26 +33,32 @@ Status PublicRoadPlanner::Init(const PlanningConfig& config) {
 Status PublicRoadPlanner::Plan(const TrajectoryPoint& planning_start_point,
                                Frame* frame,
                                ADCTrajectory* ptr_computed_trajectory) {
+  AERROR << "enter the public road planner";
   scenario_manager_.Update(planning_start_point, *frame);
+  AERROR << "complete scenario update";
   scenario_ = scenario_manager_.mutable_scenario();
   auto result = scenario_->Process(planning_start_point, frame);
-
+  AERROR << "complete scenario process";
   if (FLAGS_enable_record_debug) {
+    AERROR << "record debug in";
     auto scenario_debug = ptr_computed_trajectory->mutable_debug()
                               ->mutable_planning_data()
                               ->mutable_scenario();
     scenario_debug->set_scenario_type(scenario_->scenario_type());
     scenario_debug->set_stage_type(scenario_->GetStage());
     scenario_debug->set_msg(scenario_->GetMsg());
+    AERROR << "record debug out";
   }
 
   if (result == scenario::Scenario::STATUS_DONE) {
     // only updates scenario manager when previous scenario's status is
     // STATUS_DONE
+    AERROR << "enter next scenario";
     scenario_manager_.Update(planning_start_point, *frame);
   } else if (result == scenario::Scenario::STATUS_UNKNOWN) {
     return Status(common::PLANNING_ERROR, "scenario returned unknown");
   }
+  AERROR << "complete public road";
   return Status::OK();
 }
 

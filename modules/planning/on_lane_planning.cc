@@ -498,7 +498,7 @@ Status OnLanePlanning::Plan(
 
   auto status = planner_->Plan(stitching_trajectory.back(), frame_.get(),
                                ptr_trajectory_pb);
-
+  AERROR << "complete planner Plan()";
   ptr_debug->mutable_planning_data()->set_front_clear_distance(
       injector_->ego_info()->front_clear_distance());
 

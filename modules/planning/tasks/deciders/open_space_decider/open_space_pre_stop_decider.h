@@ -46,7 +46,13 @@ class OpenSpacePreStopDecider : public Decider {
   bool CheckPullOverPreStop(Frame* const frame,
                             ReferenceLineInfo* const reference_line_info,
                             double* target_s);
+  bool CheckDeadEndPreStop(Frame* const frame,
+                           ReferenceLineInfo* const reference_line_info,
+                           double* target_x);
 
+  void SetDeadEndStopFence(const double target_x,
+                           Frame* const frame,
+                           ReferenceLineInfo* const reference_line_info);
   void SetParkingSpotStopFence(const double target_s, Frame* const frame,
                                ReferenceLineInfo* const reference_line_info);
 

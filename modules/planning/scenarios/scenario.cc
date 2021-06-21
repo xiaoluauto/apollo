@@ -39,8 +39,9 @@ bool Scenario::LoadConfig(const std::string& config_file,
 }
 
 void Scenario::Init() {
+  AERROR << "1";
   ACHECK(!config_.stage_type().empty());
-
+  AERROR << "2";
   // set scenario_type in PlanningContext
   auto* scenario = injector_->planning_context()
                        ->mutable_planning_status()
@@ -57,7 +58,7 @@ void Scenario::Init() {
         << "stage type : " << ScenarioConfig::StageType_Name(stage_type)
         << " has no config";
   }
-  ADEBUG << "init stage "
+  AERROR << "init stage "
          << ScenarioConfig::StageType_Name(config_.stage_type(0));
   current_stage_ =
       CreateStage(*stage_config_map_[config_.stage_type(0)], injector_);

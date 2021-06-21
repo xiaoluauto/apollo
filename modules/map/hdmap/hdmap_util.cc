@@ -80,6 +80,7 @@ std::unique_ptr<HDMap> CreateMap(const std::string& map_file_path) {
 }
 
 std::unique_ptr<HDMap> CreateMap(const MapMsg& map_msg) {
+  AERROR << "map 1";
   std::unique_ptr<HDMap> hdmap(new HDMap());
   if (hdmap->LoadMapFromProto(map_msg.hdmap()) != 0) {
     AERROR << "Failed to load RelativeMap: "
@@ -133,25 +134,32 @@ const HDMap* HDMapUtil::BaseMapPtr() {
     }
   } else*/
   if (base_map_ == nullptr) {
+    AERROR << "the base map is null";
     std::lock_guard<std::mutex> lock(base_map_mutex_);
     if (base_map_ == nullptr) {  // Double check.
       base_map_ = CreateMap(BaseMapFile());
     }
   }
+  AERROR << "the base map is not null";
   return base_map_.get();
 }
 
 const HDMap& HDMapUtil::BaseMap() { return *CHECK_NOTNULL(BaseMapPtr()); }
 
 const HDMap* HDMapUtil::SimMapPtr() {
+  AERROR << "enter the sim map";
   if (FLAGS_use_navigation_mode) {
+    AERROR << "sim 1";
     return BaseMapPtr();
   } else if (sim_map_ == nullptr) {
+    AERROR << "sim 2";
     std::lock_guard<std::mutex> lock(sim_map_mutex_);
     if (sim_map_ == nullptr) {  // Double check.
+      AERROR << "sim 3";
       sim_map_ = CreateMap(SimMapFile());
     }
   }
+  AERROR << "sim 4";
   return sim_map_.get();
 }
 
