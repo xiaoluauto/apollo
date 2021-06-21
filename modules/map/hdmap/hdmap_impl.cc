@@ -269,19 +269,25 @@ int HDMapImpl::GetRoads(const Vec2d& point, double distance,
 int HDMapImpl::GetJunctions(
     const PointENU& point, double distance,
     std::vector<JunctionInfoConstPtr>* junctions) const {
+  AERROR << "777";
   return GetJunctions({point.x(), point.y()}, distance, junctions);
 }
 
 int HDMapImpl::GetJunctions(
     const Vec2d& point, double distance,
     std::vector<JunctionInfoConstPtr>* junctions) const {
+  AERROR << "888";
   if (junctions == nullptr || junction_polygon_kdtree_ == nullptr) {
+    AERROR << "999";
     return -1;
   }
   junctions->clear();
   std::vector<std::string> ids;
+  AERROR << "111111";
   const int status =
       SearchObjects(point, distance, *junction_polygon_kdtree_, &ids);
+  AERROR << "the status is: " << status; 
+  AERROR << "121212";
   if (status < 0) {
     return status;
   }

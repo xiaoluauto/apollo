@@ -119,24 +119,21 @@ bool TurningAroundScenario::IsTransferable(const Frame& frame,
                             .waypoint().at(0).pose().y() - dead_end_point.y();
   AERROR << "s is: " << routing_request_in
                         .waypoint().at(waypoint_num - 1).s();
-  // PointENU dead_end_point;
   // dead_end_point.set_x(7576824.85);
   // dead_end_point.set_y(8337819.44);
-  // PointENU dead_end_point;
-  // dead_end_point.set_x(0);
-  // dead_end_point.set_y(0);
-  // dead_end_point.set_x(7563235.7800816735);
-  // dead_end_point.set_y(8328397.9323274195);
   AERROR << "111";
   const hdmap::HDMap* base_map_ptr = hdmap::HDMapUtil::BaseMapPtr();
   AERROR << "222";
   
   std::vector<JunctionInfoConstPtr> junctions;
+  AERROR << "333";
   JunctionInfoConstPtr junction;
+  AERROR << "444";
   if (base_map_ptr->GetJunctions(dead_end_point, 1.0, &junctions) != 0) {
     AERROR << "Fail to get junctions from base_map.";
     return false;
   }
+  AERROR << "555";
   junction = junctions.back();
   AERROR << "the type is: " << junction->junction().type();
   if (junctions.size() <= 0 || junction->junction().type() != 5) {

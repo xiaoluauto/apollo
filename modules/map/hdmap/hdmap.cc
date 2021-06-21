@@ -86,6 +86,7 @@ int HDMap::GetLanes(const apollo::common::PointENU& point, double distance,
 
 int HDMap::GetJunctions(const apollo::common::PointENU& point, double distance,
                         std::vector<JunctionInfoConstPtr>* junctions) const {
+  AERROR << "666";
   return impl_.GetJunctions(point, distance, junctions);
 }
 

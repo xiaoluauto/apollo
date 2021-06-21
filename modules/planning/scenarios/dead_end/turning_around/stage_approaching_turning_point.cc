@@ -34,35 +34,35 @@ using apollo::hdmap::JunctionInfoConstPtr;
 Stage::StageStatus StageApproachingTurningPoint::Process(
     const common::TrajectoryPoint& planning_init_point, Frame* frame) {
   AERROR << "stage: StageApproachingTurningPoint";
-  // CHECK_NOTNULL(frame);
-  // GetContext()->dead_end_id.clear();
-  // // valid check
-  // PointENU test_point;
-  // test_point.set_x(7576824.85);
-  // test_point.set_y(8337819.44);
-  // const hdmap::HDMap* sim_map_ptr = HDMapUtil::SimMapPtr();
-  // std::vector<JunctionInfoConstPtr> junctions;
-  // JunctionInfoConstPtr junction;
-  // if (sim_map_ptr->GetJunctions(test_point, 1.0, &junctions) != 0) {
-  //   AERROR << "Fail to get junctions from sim_map.";
-  //   return StageStatus::ERROR;
-  // }
-  // if (junctions.size() <= 0 || junction->junction().type() != 5) {
-  //   AERROR << "No dead end message from map";
-  //   return StageStatus::ERROR;
-  // }
-  // // execute task
-  // bool plan_ok = ExecuteTaskOnReferenceLine(planning_init_point, frame);
-  // if (!plan_ok) {
-  //   AERROR << "StopSignUnprotectedStagePreStop planning error";
-  //   return StageStatus::ERROR;
-  // }
-  // // stage change
-  // if (CheckADCStop(*frame)) {
-  //   AERROR << "transfer to around turning";
-  //   next_stage_ = ScenarioConfig::TURNING_AROUND_TURNING;
-  //   return Stage::FINISHED;
-  // }
+  CHECK_NOTNULL(frame);
+  GetContext()->dead_end_id.clear();
+  // valid check
+  PointENU test_point;
+  test_point.set_x(7576824.85);
+  test_point.set_y(8337819.44);
+  const hdmap::HDMap* base_map_ptr = HDMapUtil::BaseMapPtr();
+  std::vector<JunctionInfoConstPtr> junctions;
+  JunctionInfoConstPtr junction;
+  if (base_map_ptr->GetJunctions(test_point, 1.0, &junctions) != 0) {
+    AERROR << "Fail to get junctions from sim_map.";
+    return StageStatus::ERROR;
+  }
+  if (junctions.size() <= 0 || junction->junction().type() != 5) {
+    AERROR << "No dead end message from map";
+    return StageStatus::ERROR;
+  }
+  // execute task
+  bool plan_ok = ExecuteTaskOnReferenceLine(planning_init_point, frame);
+  if (!plan_ok) {
+    AERROR << "StopSignUnprotectedStagePreStop planning error";
+    return StageStatus::ERROR;
+  }
+  // stage change
+  if (CheckADCStop(*frame)) {
+    AERROR << "transfer to around turning";
+    next_stage_ = ScenarioConfig::TURNING_AROUND_TURNING;
+    return Stage::FINISHED;
+  }
 
   return Stage::RUNNING;
 }
