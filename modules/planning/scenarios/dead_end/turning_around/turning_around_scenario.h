@@ -66,7 +66,11 @@ class TurningAroundScenario : public Scenario {
         const common::VehicleState& vehicle_state,
         const hdmap::Path& nearby_path,
         const double dead_end_start_range,
-        hdmap::JunctionInfoConstPtr junction);
+        hdmap::JunctionInfoConstPtr* junction);
+  static bool SelectTargetDeadEndJunction(
+        std::vector<hdmap::JunctionInfoConstPtr>* junctions,
+        const apollo::common::PointENU& dead_end_point,
+        hdmap::JunctionInfoConstPtr* target_junction);
  private:
   bool init_ = false;
   static apollo::common::util::Factory<

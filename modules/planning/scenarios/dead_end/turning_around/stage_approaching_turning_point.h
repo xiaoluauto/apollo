@@ -47,6 +47,11 @@ class StageApproachingTurningPoint : public Stage {
 
   bool CheckADCStop(const Frame& frame);
 
+  static bool SelectTargetDeadEndJunction(
+        std::vector<hdmap::JunctionInfoConstPtr>* junctions,
+        const apollo::common::PointENU& dead_end_point,
+        hdmap::JunctionInfoConstPtr* target_junction);
+
  private:
   ScenarioTurningAroundConfig scenario_config_;
 };

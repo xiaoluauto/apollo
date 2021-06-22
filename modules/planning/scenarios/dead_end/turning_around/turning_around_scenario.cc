@@ -119,29 +119,23 @@ bool TurningAroundScenario::IsTransferable(const Frame& frame,
                             .waypoint().at(0).pose().y() - dead_end_point.y();
   AERROR << "s is: " << routing_request_in
                         .waypoint().at(waypoint_num - 1).s();
-  // dead_end_point.set_x(7576824.85);
-  // dead_end_point.set_y(8337819.44);
-  AERROR << "111";
   const hdmap::HDMap* base_map_ptr = hdmap::HDMapUtil::BaseMapPtr();
-  AERROR << "222";
-  
   std::vector<JunctionInfoConstPtr> junctions;
-  AERROR << "333";
   JunctionInfoConstPtr junction;
-  AERROR << "444";
   if (base_map_ptr->GetJunctions(dead_end_point, 1.0, &junctions) != 0) {
     AERROR << "Fail to get junctions from base_map.";
     return false;
   }
-  AERROR << "555";
   AERROR << "the size of junctions is: " << junctions.size();
-  junction = junctions.back();
-  AERROR << "the type is: " << junction->junction().type();
-  if (junctions.size() <= 0 || junction->junction().type() != 5) {
-    AERROR << "No dead end message from map";
+  if (junctions.size() <= 0) {
+    AERROR << "No junction from map";
     return false;
   }
-
+  if (!SelectTargetDeadEndJunction(&junctions, dead_end_point, &junction)) {
+    AERROR << "Target Dead End not found";
+    return false;
+  }
+  AERROR << "the type is: " << junction->junction().type();
   target_dead_end_id = junction->id().id();
   const auto& vehicle_state = frame.vehicle_state();
   const auto& nearby_path =
@@ -149,7 +143,7 @@ bool TurningAroundScenario::IsTransferable(const Frame& frame,
   if (!CheckDistanceToDeadEnd(vehicle_state,
                               nearby_path,
                               dead_end_start_range,
-                              junction)) {
+                              &junction)) {
     AERROR << "Dead end found, but too far, distance larger than "
               "pre-defined distance "
            << target_dead_end_id;
@@ -158,13 +152,67 @@ bool TurningAroundScenario::IsTransferable(const Frame& frame,
   return true;
 }
 
+bool TurningAroundScenario::SelectTargetDeadEndJunction(
+    std::vector<JunctionInfoConstPtr>* junctions,
+    const apollo::common::PointENU& dead_end_point,
+    JunctionInfoConstPtr* target_junction) {
+  // warning: the car only be the one junction
+  size_t junction_num = junctions->size();
+  if (junction_num <= 0) {
+    AERROR << "No junctions frim map";
+    return false;
+  }
+  for(size_t i = 0; i < junction_num; ++i) {
+    if (junctions->at(i)->junction().type() == 5) {
+      Vec2d start_point =
+        junctions->at(i)->polygon().points().at(0);
+      double max_x = start_point.x();
+      double max_y = start_point.y();
+      double min_x = start_point.x();
+      double min_y = start_point.y();
+      // in the junction
+      size_t point_num = junctions->at(i)->polygon().points().size();
+      for(size_t j = 1; j < point_num; ++j) {
+        if (max_x < junctions->at(i)->polygon().points().at(j).x()) {
+          max_x = junctions->at(i)->polygon().points().at(j).x();
+        }
+        if (max_y < junctions->at(i)->polygon().points().at(j).y()) {
+          max_y = junctions->at(i)->polygon().points().at(j).y();
+        }
+        if (min_x > junctions->at(i)->polygon().points().at(j).x()) {
+          min_x = junctions->at(i)->polygon().points().at(j).x();
+        }
+        if (min_y > junctions->at(i)->polygon().points().at(j).y()) {
+          min_y = junctions->at(i)->polygon().points().at(j).y();
+        } 
+      }
+      AERROR << "the max x is: " << max_x;
+      AERROR << "the max y is: " << max_y;
+      AERROR << "the min x is: " << min_x;
+      AERROR << "the min y is: " << min_y;
+      // judge dead end point in the select junction
+      if (dead_end_point.x() >= min_x && dead_end_point.x() <= max_x &&
+          dead_end_point.y() >= min_y && dead_end_point.y() <= max_y) {
+        *target_junction = junctions->at(i);
+        return true;
+      } else {
+        return false;
+      }
+    } else {
+      AERROR << "No dead end junction";
+      return false;
+    }
+  }
+  return true;
+}
+
 bool TurningAroundScenario::CheckDistanceToDeadEnd(
     const VehicleState& vehicle_state,
     const Path& nearby_path,
     const double dead_end_start_range,
-    JunctionInfoConstPtr junction) {
+    JunctionInfoConstPtr* junction) {
   // the polygon point is Clockwise
-  auto points = junction->polygon().points();
+  auto points = (*junction)->polygon().points();
   Vec2d first_point = points.at(0);
   AERROR << "the first x is: " << first_point.x();
   AERROR << "the first y is: " << first_point.y();

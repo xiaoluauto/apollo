@@ -59,6 +59,11 @@ class OpenSpacePreStopDecider : public Decider {
   void SetPullOverStopFence(const double target_s, Frame* const frame,
                             ReferenceLineInfo* const reference_line_info);
 
+  static bool SelectTargetDeadEndJunction(
+        std::vector<hdmap::JunctionInfoConstPtr>* junctions,
+        const apollo::common::PointENU& dead_end_point,
+        hdmap::JunctionInfoConstPtr* target_junction);
+
  private:
   static constexpr const char* OPEN_SPACE_STOP_ID = "OPEN_SPACE_PRE_STOP";
   OpenSpacePreStopDeciderConfig open_space_pre_stop_decider_config_;
