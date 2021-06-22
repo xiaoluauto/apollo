@@ -134,6 +134,7 @@ bool TurningAroundScenario::IsTransferable(const Frame& frame,
     return false;
   }
   AERROR << "555";
+  AERROR << "the size of junctions is: " << junctions.size();
   junction = junctions.back();
   AERROR << "the type is: " << junction->junction().type();
   if (junctions.size() <= 0 || junction->junction().type() != 5) {
